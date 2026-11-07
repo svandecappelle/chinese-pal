@@ -276,9 +276,12 @@ def first_examples(conn, word_ids: list[int]) -> dict[int, dict]:
 
 
 @router.get("/{exercise_id}/session")
-def get_session(exercise_id: int, user: dict | None = Depends(auth.visitor)):
+def get_session(exercise_id: int, modes: str | None = None,
+                user: dict | None = Depends(auth.visitor)):
     """File de cartes du jour : cartes dues + nouvelles cartes dans la limite quotidienne.
 
+    `modes` (séparés par des virgules) limite le test à certains modes de l'exercice ;
+    `mode_counts` donne, par mode, les cartes à revoir et pas encore vues (choix avant le test).
     Un exercice public se révise sans compte ; le compte invité n'est créé qu'à la première
     réponse (POST /api/reviews).
     """
@@ -286,16 +289,28 @@ def get_session(exercise_id: int, user: dict | None = Depends(auth.visitor)):
     with pool.connection() as conn:
         exercise = get_exercise_or_404(conn, exercise_id, user)
         stats = exercise_stats(conn, exercise, user_id)
-        params = {"exercise_id": exercise_id, "user_id": user_id, "new_limit": stats["new_today"]}
+        chosen = [m for m in (modes or "").split(",") if m in exercise["modes"]] or None
+        params = {"exercise_id": exercise_id, "user_id": user_id, "new_limit": stats["new_today"],
+                  "modes": chosen}
+        only = " AND (%(modes)s::text[] IS NULL OR mode = ANY(%(modes)s))"
         due = conn.execute(
-            CARDS_CTE + "SELECT * FROM cards WHERE due_at <= now() ORDER BY due_at LIMIT 500",
+            CARDS_CTE + "SELECT * FROM cards WHERE due_at <= now()" + only
+            + " ORDER BY due_at LIMIT 500",
             params,
         ).fetchall()
         new = conn.execute(
-            CARDS_CTE + """SELECT * FROM cards WHERE due_at IS NULL
-                           ORDER BY mode_position, word_id LIMIT %(new_limit)s""",
+            CARDS_CTE + "SELECT * FROM cards WHERE due_at IS NULL" + only
+            + " ORDER BY mode_position, word_id LIMIT %(new_limit)s",
             params,
         ).fetchall()
+        mode_counts = {
+            r["mode"]: {"due": r["due"], "unseen": r["unseen"]} for r in conn.execute(
+                CARDS_CTE + """SELECT mode, count(*) FILTER (WHERE due_at <= now()) AS due,
+                                      count(*) FILTER (WHERE due_at IS NULL) AS unseen
+                               FROM cards GROUP BY mode""",
+                params,
+            )
+        }
         cards = interleave(due, new)
         examples = first_examples(conn, [c["word_id"] for c in cards])
         # Autres choix des phrases à trous : mots de l'exercice, complétés au hasard dans le
@@ -317,7 +332,7 @@ def get_session(exercise_id: int, user: dict | None = Depends(auth.visitor)):
             if c["mode"] == "sentence_cloze" or (c["mode"] == "sentence_order" and not payload["tiles"]):
                 payload["cloze"] = drills.cloze(example["hanzi"], c["hanzi"], pool_words, c["classifiers"])
         payloads.append(payload)
-    return {"exercise": exercise, "stats": stats, "cards": payloads}
+    return {"exercise": exercise, "stats": stats, "cards": payloads, "mode_counts": mode_counts}
 
 
 @router.get("/{exercise_id}/words")

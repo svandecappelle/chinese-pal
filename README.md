@@ -132,7 +132,9 @@ utile quand la vérification souple du sens se trompe.
   La progression d'une carte est commune à tous les exercices.
 - Un **exercice** choisit ses mots (tout le vocabulaire, des listes entières et/ou des mots
   choisis un par un), un ou plusieurs modes de révision et un nombre de nouvelles cartes par jour.
-  Un test contient les cartes dues + les nouvelles cartes du jour.
+  Un test contient les cartes dues + les nouvelles cartes du jour. Si l'exercice a plusieurs
+  modes, l'élève choisit avant de commencer ce qu'il travaille (tracé, pinyin, tons…), avec le
+  nombre de cartes de chacun ; le choix est mémorisé par exercice et se change en cours de test.
 - Le « jour » est calculé en UTC.
 
 ## Prononciation, ordre des traits, exemples

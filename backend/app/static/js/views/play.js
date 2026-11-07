@@ -1,4 +1,4 @@
-import { api, escape, MODES } from "../api.js";
+import { ANSWER_HINTS, api, escape, MODES } from "../api.js";
 import { checkMeaning } from "../answers.js";
 import { bindSpeakButtons, speak, speakButton, stopSpeaking } from "../audio.js";
 import { attachKeyboard } from "../keyboard.js";
@@ -137,8 +137,106 @@ function writeAutoplay(value) {
   }
 }
 
+// Modes choisis avant le test, mémorisés par exercice.
+const chosenKey = (id) => `chinese.testModes.${id}`;
+
+function readChosen(id) {
+  try {
+    return JSON.parse(localStorage.getItem(chosenKey(id)) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeChosen(id, modes) {
+  try {
+    localStorage.setItem(chosenKey(id), JSON.stringify(modes));
+  } catch {
+    // Stockage indisponible : le choix ne sera pas mémorisé.
+  }
+}
+
+/**
+ * Avant le test : choisir ce qu'on travaille parmi les modes de l'exercice (tracé, pinyin…).
+ * Résout avec la liste des modes cochés ; directement s'il n'y a qu'un mode.
+ */
+function chooseModes(el, data, id) {
+  const modes = data.exercise.modes.filter((m) => MODES[m]);
+  const counts = data.mode_counts || {};
+  const available = (m) => (counts[m]?.due || 0) + Math.min(counts[m]?.unseen || 0, data.stats.new_today);
+  if (modes.length < 2) return Promise.resolve(modes);
+  const saved = readChosen(id);
+  const checked = (m) => (saved ? saved.includes(m) : true);
+
+  return new Promise((resolve) => {
+    el.innerHTML = `
+      <div class="toolbar">
+        <div>
+          <h2>${escape(data.exercise.name)}</h2>
+          <p class="muted small">Test · réponse attendue</p>
+        </div>
+      </div>
+      <form class="flashcard test-setup" id="setup">
+        <p class="muted">Que veux-tu travailler ?</p>
+        <div class="setup-modes">
+          ${modes.map((m) => {
+            const due = counts[m]?.due || 0;
+            const fresh = Math.min(counts[m]?.unseen || 0, data.stats.new_today);
+            return `
+              <label class="setup-mode${available(m) ? "" : " empty"}">
+                <input type="checkbox" name="mode" value="${m}" ${checked(m) ? "checked" : ""}>
+                <span class="setup-label">${escape(MODES[m].label)}
+                  <small class="muted">${ANSWER_HINTS[MODES[m].answer] || ""}</small></span>
+                <span class="setup-count">${available(m)
+                  ? `${due ? `<span class="due">${due} à revoir</span>` : ""}${fresh ? `<span class="new">${fresh} nouv.</span>` : ""}`
+                  : '<span class="muted">rien aujourd\'hui</span>'}</span>
+              </label>`;
+          }).join("")}
+        </div>
+        <div class="actions center-actions">
+          <button type="button" class="secondary small-button" id="setup-all">Tout cocher</button>
+          <button type="button" class="secondary small-button" id="setup-none">Tout décocher</button>
+        </div>
+        <button type="submit" id="setup-start">Commencer le test</button>
+      </form>`;
+    const form = el.querySelector("#setup");
+    const boxes = [...form.querySelectorAll("[name=mode]")];
+    const update = () => {
+      const picked = boxes.filter((b) => b.checked);
+      const start = form.querySelector("#setup-start");
+      start.disabled = !picked.length;
+      // La limite de nouvelles cartes par jour vaut pour l'ensemble des modes choisis.
+      const due = picked.reduce((n, b) => n + (counts[b.value]?.due || 0), 0);
+      const unseen = picked.reduce((n, b) => n + (counts[b.value]?.unseen || 0), 0);
+      const total = due + Math.min(unseen, data.stats.new_today);
+      start.textContent = picked.length ? `Commencer le test${total ? ` (${total} carte${total > 1 ? "s" : ""})` : ""}` : "Coche au moins un exercice";
+    };
+    boxes.forEach((b) => b.addEventListener("change", update));
+    form.querySelector("#setup-all").addEventListener("click", () => {
+      boxes.forEach((b) => (b.checked = true));
+      update();
+    });
+    form.querySelector("#setup-none").addEventListener("click", () => {
+      boxes.forEach((b) => (b.checked = false));
+      update();
+    });
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const picked = boxes.filter((b) => b.checked).map((b) => b.value);
+      if (!picked.length) return;
+      writeChosen(id, picked);
+      resolve(picked);
+    });
+    update();
+  });
+}
+
 export async function playView(el, { id }) {
-  const data = await api(`/exercises/${id}/session`);
+  let data = await api(`/exercises/${id}/session`);
+  const picked = await chooseModes(el, data, id);
+  if (picked.length < data.exercise.modes.length) {
+    data = await api(`/exercises/${id}/session?modes=${encodeURIComponent(picked.join(","))}`);
+  }
   const queue = data.cards;
   const initialCount = queue.length;
   const results = { 1: 0, 2: 0, 3: 0, 4: 0 };
@@ -262,7 +360,9 @@ export async function playView(el, { id }) {
       <div class="toolbar">
         <div>
           <h2>${escape(data.exercise.name)}</h2>
-          <p class="muted small">Test · réponse attendue</p>
+          <p class="muted small">Test · ${picked.length < data.exercise.modes.length
+            ? `${picked.length} exercice(s) sur ${data.exercise.modes.length}` : "réponse attendue"}
+            ${data.exercise.modes.length > 1 ? '<button type="button" class="link-button" id="change-modes">changer</button>' : ""}</p>
         </div>
         <label class="check small" title="Prononcer le mot quand la réponse s'affiche">
           <input type="checkbox" id="autoplay" ${autoplay ? "checked" : ""}> 🔊 auto
@@ -330,6 +430,10 @@ export async function playView(el, { id }) {
       b.addEventListener("click", () => checkChoice(b.dataset.choice))
     );
     el.querySelector("#strokes-button").addEventListener("click", showStrokes);
+    // Revenir au choix des exercices : la vue est recréée par le routeur.
+    el.querySelector("#change-modes")?.addEventListener("click", () => {
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    });
     el.querySelector("#autoplay").addEventListener("change", (e) => {
       autoplay = e.target.checked;
       writeAutoplay(autoplay);
