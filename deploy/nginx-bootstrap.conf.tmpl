@@ -1,0 +1,9 @@
+# Port 80 seulement, le temps que certbot prouve que le domaine pointe ici.
+# `make install` l'écrit d'abord, puis le remplace par nginx-site.conf.tmpl une fois le
+# certificat obtenu : nginx refuse un bloc « listen 443 ssl » dont le certificat n'existe pas.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+    root __WEBROOT__;
+}

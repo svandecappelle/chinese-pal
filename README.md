@@ -25,6 +25,20 @@ Puis ouvrir http://localhost:8000 (doc de l'API : http://localhost:8000/docs).
 Arrêter : `docker compose down` / `podman compose down`.
 Repartir d'une base vide : ajouter `-v` pour supprimer le volume.
 
+Avec `make` (Linux, macOS) : `make up`, `make logs`, `make backup`… ; `make` seul liste tout.
+
+## Mettre en ligne
+
+Sur un serveur avec un nom de domaine, une commande installe tout (conteneurs, nginx,
+certificat HTTPS, démarrage au boot) et une autre met à jour :
+
+```bash
+make install DOMAIN=chinois.example.com EMAIL=toi@example.com
+make upgrade
+```
+
+Détails, sauvegardes et prérequis : [deploy/README.md](deploy/README.md).
+
 ## Configuration
 
 Les valeurs par défaut fonctionnent telles quelles. Pour les changer (ports, identifiants), copier
@@ -125,6 +139,8 @@ Sources et licence : [backend/app/data/README.md](backend/app/data/README.md).
 
 ```
 compose.yaml
+Makefile           commandes (make install, make upgrade, make backup…)
+deploy/            installation serveur : scripts, modèles nginx
 backend/
   Dockerfile
   requirements.txt

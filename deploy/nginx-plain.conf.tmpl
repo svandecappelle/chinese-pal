@@ -1,0 +1,27 @@
+# HTTP seulement, sans certificat : `make install ... SKIP_TLS=1`, pour un serveur placé
+# derrière un autre proxy qui fait le TLS. Même relais que nginx-site.conf.tmpl.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __DOMAIN__;
+
+    location /.well-known/acme-challenge/ {
+        root __WEBROOT__;
+    }
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    client_max_body_size 2m;
+
+    location / {
+        proxy_pass http://127.0.0.1:__PORT__;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_read_timeout 60s;
+    }
+}

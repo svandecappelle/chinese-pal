@@ -1,5 +1,11 @@
 # Compatible `docker compose` et `podman compose` / `podman-compose`.
 # Images en nom complet (docker.io/...) pour que Podman n'ait pas à demander le registre.
+#
+# Les ports ne sont publiés que sur 127.0.0.1 : sur un serveur, seul nginx est joignable
+# depuis l'extérieur (voir deploy/). En local, l'app reste sur http://localhost:8000.
+
+# Nom fixe : le volume de la base s'appelle chinese_pgdata quel que soit le dossier du clone.
+name: chinese
 
 services:
   db:
@@ -12,7 +18,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -26,7 +32,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-chinese}:${POSTGRES_PASSWORD:-chinese}@db:5432/${POSTGRES_DB:-chinese}
     ports:
-      - "${APP_PORT:-8000}:8000"
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
