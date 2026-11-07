@@ -45,7 +45,8 @@ export function stopSpeaking() {
  */
 export function speak(text, pinyin) {
   stopSpeaking();
-  const params = new URLSearchParams({ text });
+  // `v` : nouvelle adresse pour écarter l'audio gardé par le navigateur avant la revalidation.
+  const params = new URLSearchParams({ text, v: "2" });
   if (pinyin) params.set("pinyin", pinyin);
   const audio = new Audio(`/api/tts?${params}`);
   current = audio;

@@ -17,12 +17,16 @@ from array import array
 from pathlib import Path
 
 from .config import settings
+from .db import pool
 
 log = logging.getLogger(__name__)
 
 # Identifie la voix dans le cache : à changer avec le modèle ou les réglages.
-VOICE = "matcha-baker-0.9"
+VOICE = "matcha-baker-0.9-v2"
 SPEED = 0.9
+# Silence ajoutée autour du son : certains navigateurs et sorties audio rognent les bords.
+PADDING_SECONDS = (0.05, 0.25)
+FINAL_PUNCTUATION = re.compile(r"[。！？!?.…]$")
 
 TONE_MARKS = {"̄": "1", "́": "2", "̌": "3", "̀": "4"}
 # Syllabes du lexique absentes du modèle, remplacées par une lecture équivalente.
@@ -103,11 +107,16 @@ class Synthesizer:
     def synthesize(self, text: str, reading: str = "") -> bytes:
         """Renvoie un fichier WAV (mono, 16 bits)."""
         self.load()
+        spoken = self.syllables[reading] if reading else text
+        # Sans ponctuation finale, le modèle s'arrête net au milieu du dernier son.
+        if not FINAL_PUNCTUATION.search(spoken):
+            spoken += "。"
         with self.lock:
-            audio = self.tts.generate(self.syllables[reading] if reading else text, sid=0, speed=SPEED)
+            audio = self.tts.generate(spoken, sid=0, speed=SPEED)
         if not len(audio.samples):
             raise ValueError("Aucun son produit pour ce texte")
-        pcm = array("h", (int(max(-1.0, min(1.0, s)) * 32767) for s in audio.samples))
+        before, after = (array("h", bytes(2 * int(s * audio.sample_rate))) for s in PADDING_SECONDS)
+        pcm = before + array("h", (int(max(-1.0, min(1.0, s)) * 32767) for s in audio.samples)) + after
         buffer = io.BytesIO()
         with wave.open(buffer, "wb") as out:
             out.setnchannels(1)
@@ -128,5 +137,8 @@ def preload() -> None:
             synthesizer.load()
         except Exception:
             log.exception("Synthèse vocale indisponible")
+        # L'audio d'une ancienne voix ne sera plus jamais servi.
+        with pool.connection() as conn:
+            conn.execute("DELETE FROM tts_cache WHERE voice <> %s", (VOICE,))
 
     threading.Thread(target=run, daemon=True).start()

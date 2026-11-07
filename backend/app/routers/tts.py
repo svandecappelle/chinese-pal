@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Header, HTTPException, Query, Response
 
 from ..db import pool
 from ..tts import VOICE, Unavailable, synthesizer
@@ -10,8 +10,13 @@ router = APIRouter(prefix="/api/tts", tags=["prononciation"])
 def speak(
     text: str = Query(min_length=1, max_length=200),
     pinyin: str | None = Query(None, max_length=40, description="Lecture d'un caractère seul"),
+    if_none_match: str | None = Header(None),
 ):
     """Prononciation d'un mot ou d'une phrase en WAV, calculée une fois puis gardée en base."""
+    # Le navigateur garde l'audio mais le revalide : il change quand la voix change.
+    headers = {"Cache-Control": "no-cache", "ETag": f'"{VOICE}"'}
+    if if_none_match == headers["ETag"]:
+        return Response(status_code=304, headers=headers)
     text = text.strip()
     try:
         reading = synthesizer.reading(text, pinyin)
@@ -40,4 +45,4 @@ def speak(
                 key | {"audio": audio},
             )
 
-    return Response(audio, media_type="audio/wav", headers={"Cache-Control": "max-age=604800"})
+    return Response(audio, media_type="audio/wav", headers=headers)
