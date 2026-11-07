@@ -1,17 +1,21 @@
 import { api } from "./api.js";
 
 // Utilisateur connecté, partagé par toutes les vues. `user` vaut null sans connexion.
-export const session = { user: null, permissions: {} };
+// `guest` : sans compte, mais une progression d'invité existe dans ce navigateur.
+export const session = { user: null, guest: false, permissions: {} };
 
 export async function loadSession() {
   const data = await api("/account");
   session.user = data.user;
+  session.guest = data.guest;
   session.permissions = data.permissions;
   return session.user;
 }
 
 export function setUser(user) {
   session.user = user;
+  // Connexion : la progression d'invité a rejoint le compte. Déconnexion : plus de cookie.
+  session.guest = false;
   window.dispatchEvent(new Event("session-change"));
 }
 

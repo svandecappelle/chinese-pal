@@ -57,7 +57,7 @@ ORDER BY g.name
 
 
 def fetch_user(conn, user_id: int) -> dict:
-    user = conn.execute(USERS_SQL.format(where="WHERE u.id = %s"), (user_id,)).fetchone()
+    user = conn.execute(USERS_SQL.format(where="WHERE u.id = %s AND NOT u.is_guest"), (user_id,)).fetchone()
     if user is None:
         raise HTTPException(404, "Compte introuvable")
     return user
@@ -97,7 +97,7 @@ def set_groups(conn, user_id: int, group_ids: list[int]) -> None:
 @router.get("/users")
 def list_users(_: dict = Depends(auth.require("manage_users"))):
     with pool.connection() as conn:
-        return conn.execute(USERS_SQL.format(where="")).fetchall()
+        return conn.execute(USERS_SQL.format(where="WHERE NOT u.is_guest")).fetchall()
 
 
 @router.post("/users", status_code=201)

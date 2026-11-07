@@ -22,13 +22,15 @@ class ProfileIn(BaseModel):
 
 
 @router.get("")
-def me(user: dict | None = Depends(auth.optional_user)):
-    """L'utilisateur connecté (ou null) et la liste des droits possibles."""
-    return {"user": user, "permissions": auth.PERMISSIONS}
+def me(holder: dict | None = Depends(auth.visitor)):
+    """L'utilisateur connecté (ou null), s'il révise en invité, et la liste des droits possibles."""
+    guest = bool(holder and holder["is_guest"])
+    return {"user": None if guest else holder, "guest": guest, "permissions": auth.PERMISSIONS}
 
 
 @router.post("/login")
-def login(data: LoginIn, request: Request, response: Response):
+def login(data: LoginIn, request: Request, response: Response,
+          holder: dict | None = Depends(auth.visitor)):
     key = data.username.lower()
     auth.check_throttle(key)
     with pool.connection() as conn:
@@ -41,6 +43,11 @@ def login(data: LoginIn, request: Request, response: Response):
             auth.record_failure(key)
             raise HTTPException(401, "Identifiant ou mot de passe incorrect")
         auth.clear_failures(key)
+        if holder and holder["is_guest"]:
+            auth.merge_guest(conn, holder["id"], row["id"])
+        elif token := request.cookies.get(auth.COOKIE):
+            # Une session précédente sur ce navigateur est remplacée par la nouvelle.
+            conn.execute("DELETE FROM sessions WHERE token_hash = %s", (auth.token_hash(token),))
         conn.execute("UPDATE users SET last_login_at = now() WHERE id = %s", (row["id"],))
         auth.open_session(conn, row["id"], request, response)
         return {"user": auth.load_user(conn, row["id"])}

@@ -51,7 +51,8 @@ Les valeurs par défaut fonctionnent telles quelles. Pour les changer (ports, id
 
 ## Comptes et droits
 
-Le vocabulaire se consulte sans compte ; réviser et modifier demandent de se connecter. Il n'y a
+Le vocabulaire et les exercices **publics** se consultent et se révisent sans compte ; le reste
+(exercices d'une classe, modifications) demande de se connecter. Il n'y a
 pas d'inscription : les comptes sont créés dans **Administration** (un mot de passe est généré et
 affiché une fois ; chacun le change ensuite dans « Mon compte »).
 
@@ -68,6 +69,12 @@ droit). Un groupe sert aussi de **classe** : un professeur attribue son exercice
 à des groupes, ou à tous les comptes, et ses membres le voient dans leurs exercices. Chacun a sa
 propre progression ; l'auteur suit celle de ses élèves (bouton **Suivi**). Seul l'auteur d'un
 exercice (ou un administrateur) peut le modifier.
+
+**Exercices publics** : la case « Public » de l'éditeur rend un exercice révisable par n'importe
+qui, sans compte. À sa première réponse, le visiteur reçoit un compte invité invisible, tenu par
+un cookie (un an, prolongé à chaque visite) : sa progression reste dans ce navigateur. S'il se
+connecte ensuite, elle rejoint son compte (en cas de doublon, celle du compte l'emporte). Le
+suivi de l'auteur compte ces visiteurs sans les nommer.
 
 Sécurité : mots de passe hachés avec scrypt, session dans un cookie `HttpOnly` / `SameSite=Lax`
 (`Secure` derrière HTTPS), 30 jours glissants ; trop d'échecs de connexion bloquent l'identifiant

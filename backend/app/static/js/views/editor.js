@@ -12,7 +12,7 @@ export async function editorView(el, { id }) {
       ? api(`/exercises/${id}`)
       : Promise.resolve({ name: "", description: "", modes: ["hanzi_to_meaning"],
           new_per_day: 10, all_words: false, deck_ids: [], word_ids: [],
-          everyone: false, group_ids: [] }),
+          everyone: false, group_ids: [], public: false }),
   ]);
   if (id && !exercise.can_edit) {
     el.innerHTML = `<div class="empty"><p>Seul l'auteur de cet exercice (ou un administrateur) peut le modifier.</p>
@@ -98,6 +98,12 @@ export async function editorView(el, { id }) {
 
       <fieldset>
         <legend>Attribué à</legend>
+        <label class="check">
+          <input type="checkbox" name="public" ${exercise.public ? "checked" : ""}>
+          Public : n'importe qui peut le réviser, sans compte
+        </label>
+        <p class="muted small">Un visiteur garde sa progression dans son navigateur ; elle rejoint
+          son compte s'il se connecte.</p>
         <label class="check">
           <input type="checkbox" name="everyone" ${exercise.everyone ? "checked" : ""}>
           Tous les comptes
@@ -221,6 +227,7 @@ export async function editorView(el, { id }) {
       deck_ids: checkedValues("deck").map(Number),
       word_ids: [...selected],
       everyone: form.elements.everyone.checked,
+      public: form.elements.public.checked,
       group_ids: form.elements.everyone.checked ? [] : checkedValues("group").map(Number),
     };
     if (!body.modes.length) {

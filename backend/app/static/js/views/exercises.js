@@ -6,21 +6,30 @@ export async function exercisesView(el) {
   const assigned = exercises.filter((ex) => ex.assigned);
   const others = exercises.filter((ex) => !ex.assigned);
   const todoTotal = assigned.reduce((n, ex) => n + ex.stats.due + ex.stats.new_today, 0);
+  const anonymous = !session.user;
 
   el.innerHTML = `
     <div class="toolbar">
       <div>
         <h2>Exercices</h2>
-        <p class="muted small">${todoTotal
-          ? `${todoTotal} carte(s) à réviser aujourd'hui`
+        <p class="muted small">${!assigned.length ? ""
+          : todoTotal ? `${todoTotal} carte(s) à réviser aujourd'hui`
           : "Tout est à jour pour aujourd'hui 🎉"}</p>
       </div>
       ${can("manage_courses") ? '<a class="button" href="#/exercices/nouveau">+ Nouvel exercice</a>' : ""}
     </div>
+    ${anonymous && assigned.length ? `
+      <p class="notice small">Exercices publics : révise sans compte.
+        ${session.guest ? "Ta progression est gardée dans ce navigateur ; " : "Ta progression sera gardée dans ce navigateur ; "}
+        <a href="#/connexion">connecte-toi</a> pour la retrouver sur tous tes appareils.</p>` : ""}
     <div class="grid">
       ${assigned.map(card).join("") || `
         <div class="empty">
-          ${can("manage_courses")
+          ${anonymous
+            ? `<p>Aucun exercice public pour l'instant.</p>
+               <p><a href="#/connexion">Connecte-toi</a> pour réviser les exercices de ta classe,
+                 ou <a href="#/vocabulaire">parcours le vocabulaire</a>.</p>`
+            : can("manage_courses")
             ? `<p>Aucun exercice pour l'instant.</p>
                <p><a href="#/vocabulaire">Importe une liste HSK</a> puis crée ton premier exercice.</p>`
             : "<p>Aucun exercice ne t'est encore attribué : ton professeur l'ajoutera à ta classe.</p>"}
@@ -36,8 +45,10 @@ function audience(ex) {
   if (!ex.can_edit) {
     return ex.owner_username ? `<p class="muted small">Par ${escape(ex.owner_name || ex.owner_username)}</p>` : "";
   }
-  const to = ex.everyone ? "tous les comptes"
-    : ex.group_ids.length ? `${ex.group_ids.length} groupe(s)` : "toi seul";
+  const to = [
+    ex.public && "tout le monde, sans compte",
+    ex.everyone ? "tous les comptes" : ex.group_ids.length && `${ex.group_ids.length} groupe(s)`,
+  ].filter(Boolean).join(" · ") || "toi seul";
   const by = ex.owner_id === session.user.id ? "" : ` · par ${escape(ex.owner_name || ex.owner_username || "?")}`;
   return `<p class="muted small">Pour ${to}${by}</p>`;
 }

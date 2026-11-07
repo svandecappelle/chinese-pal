@@ -28,6 +28,9 @@ PERMISSIONS = {
 
 COOKIE = "session"
 SESSION_DAYS = 30
+# Un invité (visiteur qui révise un exercice public) n'a que ce cookie pour retrouver sa
+# progression : il dure plus longtemps, et le compte invité disparaît avec lui.
+GUEST_SESSION_DAYS = 365
 
 # ---------------------------------------------------------------- mots de passe
 
@@ -92,9 +95,10 @@ def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def open_session(conn, user_id: int, request: Request, response: Response) -> None:
+def open_session(conn, user_id: int, request: Request, response: Response,
+                 days: int = SESSION_DAYS) -> None:
     token = secrets.token_urlsafe(32)
-    expires = datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)
+    expires = datetime.now(timezone.utc) + timedelta(days=days)
     conn.execute(
         "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (%s, %s, %s)",
         (token_hash(token), user_id, expires),
@@ -102,7 +106,7 @@ def open_session(conn, user_id: int, request: Request, response: Response) -> No
     conn.execute("DELETE FROM sessions WHERE expires_at < now()")
     response.set_cookie(
         COOKIE, token,
-        max_age=SESSION_DAYS * 86400,
+        max_age=days * 86400,
         httponly=True,
         samesite="lax",
         # Derrière nginx en HTTPS (X-Forwarded-Proto), le cookie ne part jamais en clair.
@@ -119,7 +123,7 @@ def close_session(conn, request: Request, response: Response) -> None:
 
 
 USER_SQL = """
-SELECT u.id, u.username, u.display_name, u.is_admin,
+SELECT u.id, u.username, u.display_name, u.is_admin, u.is_guest,
        COALESCE(array_agg(DISTINCT p) FILTER (WHERE p IS NOT NULL), '{{}}') AS permissions
 FROM users u
 LEFT JOIN user_groups ug ON ug.user_id = u.id
@@ -140,21 +144,66 @@ def load_user(conn, user_id: int) -> dict | None:
     return with_permissions(user) if user else None
 
 
-def optional_user(request: Request) -> dict | None:
-    """L'utilisateur connecté, ou None. Prolonge la session au passage (une fois par heure)."""
+def visitor(request: Request) -> dict | None:
+    """Titulaire de la session : compte, invité (`is_guest`) ou None.
+
+    Prolonge la session au passage (une fois par heure).
+    """
     token = request.cookies.get(COOKIE)
     if not token:
         return None
     with pool.connection() as conn:
         session = conn.execute(
-            """UPDATE sessions SET last_seen_at = now(),
+            """UPDATE sessions s SET last_seen_at = now(),
                    expires_at = CASE WHEN last_seen_at < now() - interval '1 hour'
-                                     THEN now() + make_interval(days => %s) ELSE expires_at END
-               WHERE token_hash = %s AND expires_at > now()
-               RETURNING user_id""",
-            (SESSION_DAYS, token_hash(token)),
+                       THEN now() + make_interval(days => CASE WHEN u.is_guest THEN %s ELSE %s END)
+                       ELSE expires_at END
+               FROM users u
+               WHERE u.id = s.user_id AND s.token_hash = %s AND s.expires_at > now()
+               RETURNING s.user_id""",
+            (GUEST_SESSION_DAYS, SESSION_DAYS, token_hash(token)),
         ).fetchone()
         return load_user(conn, session["user_id"]) if session else None
+
+
+def optional_user(user: dict | None = Depends(visitor)) -> dict | None:
+    """L'utilisateur connecté à un vrai compte, ou None (un invité n'est pas connecté)."""
+    return None if user is None or user["is_guest"] else user
+
+
+def create_guest(conn, request: Request, response: Response) -> dict:
+    """Compte invité pour un visiteur qui révise un exercice public, tenu par un cookie."""
+    # Les invités dont la session a expiré ne peuvent plus être retrouvés : on les efface.
+    conn.execute(
+        """DELETE FROM users u WHERE u.is_guest
+           AND NOT EXISTS (SELECT 1 FROM sessions s WHERE s.user_id = u.id AND s.expires_at > now())
+           AND u.created_at < now() - interval '1 day'"""
+    )
+    guest_id = conn.execute(
+        """INSERT INTO users (username, display_name, is_guest, last_login_at)
+           VALUES (%s, 'Invité', true, now()) RETURNING id""",
+        (f"invite-{secrets.token_hex(8)}",),
+    ).fetchone()["id"]
+    open_session(conn, guest_id, request, response, GUEST_SESSION_DAYS)
+    return load_user(conn, guest_id)
+
+
+def merge_guest(conn, guest_id: int, user_id: int) -> None:
+    """À la connexion, la progression de l'invité rejoint le compte, puis l'invité disparaît.
+
+    Pour une carte déjà révisée des deux côtés, l'état du compte l'emporte.
+    """
+    conn.execute(
+        """INSERT INTO review_states (user_id, word_id, mode, ease, interval_days, repetitions,
+                                      lapses, due_at, first_reviewed_at, last_reviewed_at)
+           SELECT %s, word_id, mode, ease, interval_days, repetitions, lapses, due_at,
+                  first_reviewed_at, last_reviewed_at
+           FROM review_states WHERE user_id = %s
+           ON CONFLICT (user_id, word_id, mode) DO NOTHING""",
+        (user_id, guest_id),
+    )
+    conn.execute("UPDATE review_log SET user_id = %s WHERE user_id = %s", (user_id, guest_id))
+    conn.execute("DELETE FROM users WHERE id = %s AND is_guest", (guest_id,))
 
 
 def current_user(user: dict | None = Depends(optional_user)) -> dict:

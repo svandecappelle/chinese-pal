@@ -12,14 +12,14 @@ import { vocabView } from "./views/vocab.js";
 // [chemin, vue, onglet actif, accès]. Accès : null (libre), "user" (connecté) ou un droit.
 // Chaque vue reçoit (élément, paramètres) et peut renvoyer une fonction de nettoyage.
 const routes = [
-  [/^\/$/, exercisesView, "exercises", "user"],
+  [/^\/$/, exercisesView, "exercises", null],
   [/^\/connexion$/, loginView, "", null],
   [/^\/compte$/, accountView, "account", "user"],
   [/^\/administration$/, adminView, "admin", "manage_users"],
   [/^\/exercices\/nouveau$/, editorView, "exercises", "manage_courses"],
   [/^\/exercices\/(?<id>\d+)\/modifier$/, editorView, "exercises", "manage_courses"],
   [/^\/exercices\/(?<id>\d+)\/suivi$/, progressView, "exercises", "manage_courses"],
-  [/^\/exercices\/(?<id>\d+)\/reviser$/, playView, "exercises", "user"],
+  [/^\/exercices\/(?<id>\d+)\/reviser$/, playView, "exercises", null],
   [/^\/vocabulaire$/, vocabView, "vocab", null],
 ];
 
@@ -28,7 +28,6 @@ let cleanup = null;
 
 function renderHeader() {
   const user = session.user;
-  document.querySelector("[data-nav=exercises]").hidden = !user;
   document.querySelector("[data-nav=admin]").hidden = !can("manage_users");
   document.getElementById("account").innerHTML = user
     ? `<a href="#/compte" data-nav="account" class="account-link" title="Mon compte">

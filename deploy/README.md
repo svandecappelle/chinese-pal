@@ -89,7 +89,8 @@ administrateur.
 
 ## À savoir
 
-- Le vocabulaire est consultable sans compte ; réviser et modifier demandent une connexion.
+- Le vocabulaire et les exercices publics sont accessibles sans compte ; le reste demande une
+  connexion.
   Pour tout réserver, ajoute une authentification HTTP dans nginx (`auth_basic`).
 - La base n'est joignable que depuis le serveur (`127.0.0.1:5432`) ; à distance, passe par un
   tunnel SSH : `ssh -L 5432:127.0.0.1:5432 serveur`.

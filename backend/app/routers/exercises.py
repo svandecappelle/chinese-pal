@@ -66,6 +66,8 @@ class ExerciseIn(BaseModel):
     # À qui le cours est attribué : tous les comptes, ou certains groupes.
     everyone: bool = False
     group_ids: list[int] = []
+    # Public : révisable par n'importe qui, sans compte.
+    public: bool = False
 
     def db_params(self) -> dict:
         # Modes dédoublonnés et remis dans l'ordre canonique.
@@ -98,28 +100,31 @@ def exercise_stats(conn, exercise: dict, user_id: int) -> dict:
 
 
 # Cours avec leur auteur, leurs groupes, et ce que l'utilisateur %(user_id)s peut en faire :
-# `assigned` (il le révise : auteur, groupe visé ou tout le monde), `can_edit`.
+# `assigned` (il le révise : public, ou pour un compte : auteur, groupe visé, tous les comptes),
+# `can_edit`. Un invité ou un visiteur (%(account)s faux) ne voit que les exercices publics.
 EXERCISES_SQL = """
 SELECT e.*, u.display_name AS owner_name, u.username AS owner_username,
        COALESCE((SELECT array_agg(group_id ORDER BY group_id)
                  FROM exercise_groups WHERE exercise_id = e.id), '{}') AS group_ids,
-       (e.owner_id = %(user_id)s OR e.everyone OR EXISTS (
+       (e.public OR (%(account)s AND (e.owner_id = %(user_id)s OR e.everyone OR EXISTS (
             SELECT 1 FROM exercise_groups eg JOIN user_groups ug ON ug.group_id = eg.group_id
-            WHERE eg.exercise_id = e.id AND ug.user_id = %(user_id)s)) AS assigned,
+            WHERE eg.exercise_id = e.id AND ug.user_id = %(user_id)s)))) AS assigned,
        (%(is_admin)s OR (%(can_create)s AND e.owner_id = %(user_id)s)) AS can_edit
 FROM exercises e LEFT JOIN users u ON u.id = e.owner_id
 """
 
 
-def user_params(user: dict) -> dict:
+def user_params(user: dict | None) -> dict:
+    """Paramètres d'EXERCISES_SQL pour un compte, un invité ou un visiteur (None)."""
     return {
-        "user_id": user["id"],
-        "is_admin": user["is_admin"],
+        "user_id": user["id"] if user else None,
+        "account": bool(user and not user["is_guest"]),
+        "is_admin": bool(user and user["is_admin"]),
         "can_create": auth.can(user, "manage_courses"),
     }
 
 
-def get_exercise_or_404(conn, exercise_id: int, user: dict) -> dict:
+def get_exercise_or_404(conn, exercise_id: int, user: dict | None) -> dict:
     """Le cours, s'il est attribué à l'utilisateur ou s'il peut le modifier."""
     exercise = conn.execute(
         EXERCISES_SQL + "WHERE e.id = %(id)s", {**user_params(user), "id": exercise_id}
@@ -170,8 +175,11 @@ def interleave(due: list, new: list) -> list:
 
 
 @router.get("")
-def list_exercises(user: dict = Depends(auth.current_user)):
-    """Cours attribués à l'utilisateur, puis ceux qu'il peut seulement modifier (administrateur)."""
+def list_exercises(user: dict | None = Depends(auth.visitor)):
+    """Cours attribués à l'utilisateur, puis ceux qu'il peut seulement modifier (administrateur).
+
+    Sans compte : les exercices publics, avec la progression de l'invité s'il en a une.
+    """
     with pool.connection() as conn:
         exercises = conn.execute(
             f"SELECT * FROM ({EXERCISES_SQL}) e WHERE assigned OR can_edit "
@@ -179,7 +187,7 @@ def list_exercises(user: dict = Depends(auth.current_user)):
             user_params(user),
         ).fetchall()
         for exercise in exercises:
-            exercise["stats"] = exercise_stats(conn, exercise, user["id"])
+            exercise["stats"] = exercise_stats(conn, exercise, user["id"] if user else None)
         return exercises
 
 
@@ -204,9 +212,9 @@ def create_exercise(data: ExerciseIn, user: dict = Depends(auth.require("manage_
         with pool.connection() as conn:
             exercise = conn.execute(
                 """INSERT INTO exercises (name, description, modes, new_per_day, all_words,
-                                          everyone, owner_id)
+                                          everyone, public, owner_id)
                    VALUES (%(name)s, %(description)s, %(modes)s, %(new_per_day)s, %(all_words)s,
-                           %(everyone)s, %(owner_id)s)
+                           %(everyone)s, %(public)s, %(owner_id)s)
                    RETURNING *""",
                 {**data.db_params(), "owner_id": user["id"]},
             ).fetchone()
@@ -226,7 +234,7 @@ def update_exercise(exercise_id: int, data: ExerciseIn, user: dict = Depends(aut
             exercise = conn.execute(
                 """UPDATE exercises SET name = %(name)s, description = %(description)s,
                        modes = %(modes)s, new_per_day = %(new_per_day)s,
-                       all_words = %(all_words)s, everyone = %(everyone)s
+                       all_words = %(all_words)s, everyone = %(everyone)s, public = %(public)s
                    WHERE id = %(id)s RETURNING *""",
                 {**data.db_params(), "id": exercise_id},
             ).fetchone()
@@ -246,12 +254,17 @@ def delete_exercise(exercise_id: int, user: dict = Depends(auth.current_user)):
 
 
 @router.get("/{exercise_id}/session")
-def get_session(exercise_id: int, user: dict = Depends(auth.current_user)):
-    """File de cartes du jour : cartes dues + nouvelles cartes dans la limite quotidienne."""
+def get_session(exercise_id: int, user: dict | None = Depends(auth.visitor)):
+    """File de cartes du jour : cartes dues + nouvelles cartes dans la limite quotidienne.
+
+    Un exercice public se révise sans compte ; le compte invité n'est créé qu'à la première
+    réponse (POST /api/reviews).
+    """
+    user_id = user["id"] if user else None
     with pool.connection() as conn:
         exercise = get_exercise_or_404(conn, exercise_id, user)
-        stats = exercise_stats(conn, exercise, user["id"])
-        params = {"exercise_id": exercise_id, "user_id": user["id"], "new_limit": stats["new_today"]}
+        stats = exercise_stats(conn, exercise, user_id)
+        params = {"exercise_id": exercise_id, "user_id": user_id, "new_limit": stats["new_today"]}
         due = conn.execute(
             CARDS_CTE + "SELECT * FROM cards WHERE due_at <= now() ORDER BY due_at LIMIT 500",
             params,
@@ -287,13 +300,28 @@ def get_progress(exercise_id: int, user: dict = Depends(auth.current_user)):
             """SELECT u.id, u.username, u.display_name,
                       (SELECT max(reviewed_at) FROM review_log WHERE user_id = u.id) AS last_review
                FROM users u
-               WHERE u.active AND (%(everyone)s OR u.id IN (
+               WHERE u.active AND NOT u.is_guest AND (%(everyone)s OR u.id IN (
                    SELECT ug.user_id FROM user_groups ug
                    JOIN exercise_groups eg ON eg.group_id = ug.group_id
-                   WHERE eg.exercise_id = %(id)s))
-               ORDER BY lower(u.username)""",
-            {"everyone": exercise["everyone"], "id": exercise_id},
+                   WHERE eg.exercise_id = %(id)s
+                   UNION
+                   -- Exercice public : aussi les comptes qui l'ont commencé d'eux-mêmes.
+                   SELECT rs.user_id FROM review_states rs
+                   JOIN exercises e ON e.id = %(id)s AND e.public
+                   WHERE (rs.word_id, rs.mode) IN (SELECT word_id, mode FROM cards)))
+               ORDER BY lower(u.username)""".replace(
+                "SELECT u.id", CARDS_CTE + "SELECT u.id", 1),
+            {"everyone": exercise["everyone"], "id": exercise_id,
+             "exercise_id": exercise_id, "user_id": None},
         ).fetchall()
         for student in students:
             student["stats"] = exercise_stats(conn, exercise, student["id"])
-        return {"exercise": exercise, "students": students}
+        # Visiteurs sans compte qui ont révisé cet exercice (nombre seulement).
+        guests = conn.execute(
+            CARDS_CTE + """SELECT count(DISTINCT rs.user_id) AS n
+                           FROM cards c
+                           JOIN review_states rs ON rs.word_id = c.word_id AND rs.mode = c.mode
+                           JOIN users u ON u.id = rs.user_id AND u.is_guest""",
+            {"exercise_id": exercise_id, "user_id": None},
+        ).fetchone()["n"] if exercise["public"] else 0
+        return {"exercise": exercise, "students": students, "guests": guests}

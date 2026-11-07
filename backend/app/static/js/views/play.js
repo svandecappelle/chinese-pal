@@ -2,6 +2,7 @@ import { api, escape, MODES } from "../api.js";
 import { bindSpeakButtons, speak, speakButton, stopSpeaking } from "../audio.js";
 import { attachKeyboard } from "../keyboard.js";
 import { checkPinyin, numbersToMarks } from "../pinyin.js";
+import { session } from "../session.js";
 import { mountStrokes } from "../strokes.js";
 import { toast } from "../ui.js";
 
@@ -244,6 +245,8 @@ export async function playView(el, { id }) {
         method: "POST",
         body: { word_id: card.word_id, mode: card.mode, grade },
       });
+      // Sans compte, la première réponse a créé la progression d'invité (cookie).
+      if (!session.user) session.guest = true;
       results[grade] += 1;
       queue.shift();
       // La carte reprogrammée garde son exemple (non renvoyé par l'API de révision).

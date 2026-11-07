@@ -21,7 +21,8 @@ export async function loginView(el) {
         <button type="submit">Se connecter</button>
       </form>
       <p class="muted small center">Sans compte, tu peux
-        <a href="#/vocabulaire">parcourir le vocabulaire</a>.</p>
+        <a href="#/vocabulaire">parcourir le vocabulaire</a>
+        et <a href="#/">réviser les exercices publics</a>.</p>
     </div>`;
 
   const form = el.querySelector("#login-form");

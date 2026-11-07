@@ -6,7 +6,7 @@ const date = (iso) =>
 
 // Suivi d'un exercice par son auteur : où en est chaque élève à qui il est attribué.
 export async function progressView(el, { id }) {
-  const { exercise, students } = await api(`/exercises/${id}/progress`);
+  const { exercise, students, guests } = await api(`/exercises/${id}/progress`);
   const rows = students.map((s) => {
     const { total, unseen, due } = s.stats;
     const seen = total - unseen;
@@ -18,7 +18,8 @@ export async function progressView(el, { id }) {
       <div>
         <h2>Suivi · ${escape(exercise.name)}</h2>
         <p class="muted small">${exercise.everyone ? "Attribué à tous les comptes" : "Élèves des groupes attribués"}
-          · ${rows.length} élève(s)</p>
+          · ${rows.length} élève(s)${exercise.public
+            ? ` · public : ${guests} visiteur(s) sans compte l'ont révisé` : ""}</p>
       </div>
       <div class="actions">
         <a class="button secondary" href="#/exercices/${id}/modifier">Modifier</a>
