@@ -140,6 +140,15 @@ utile quand la vérification souple du sens se trompe.
 - **Ordre des traits** : [Hanzi Writer](https://hanziwriter.org) (MIT), chargé depuis le CDN
   jsDelivr, avec animation et entraînement au tracé dans la fiche d'un mot
   ([strokes.js](backend/app/static/js/strokes.js)). Nécessite une connexion Internet.
+- **Fiches d'écriture** (onglet **Fiches**, ou « ✍ Fiches » sur un exercice et dans le
+  vocabulaire) : des fiches A4 à imprimer
+  ([writing.js](backend/app/static/js/views/writing.js)). On choisit des caractères au choix, ou
+  des mots d'un exercice ou d'une liste (les 30 premiers cochés d'office). Pour chaque caractère,
+  la fiche montre l'ordre des traits pas à pas (le trait ajouté en rouge), un modèle, des modèles
+  grisés à repasser puis des cases vides. Réglages : quadrillage 田字格, 米字格 ou cases vides,
+  taille des cases (12, 16 ou 20 mm), nombre de modèles grisés et de lignes, pinyin et sens
+  affichés ou non (pour une dictée), caractères répétés ou non. Les tracés viennent des données de
+  Hanzi Writer ; sans connexion, les caractères sont écrits avec la police, sans les étapes.
 - **Exemples** : une phrase par mot HSK (avec pinyin et traduction), affichée avec la réponse.
   On peut en ajouter ou en supprimer depuis la fiche d'un mot (clic sur une ligne du vocabulaire).
 
@@ -227,5 +236,5 @@ backend/
       js/answers.js  vérification souple d'un sens tapé
       js/ui.js       notifications, pagination
       js/views/      écrans (exercices, éditeur, révision, test, suivi, vocabulaire, fiche d'un mot,
-                     connexion, compte, administration)
+                     fiches d'écriture, connexion, compte, administration)
 ```

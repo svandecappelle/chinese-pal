@@ -52,6 +52,8 @@ export async function vocabView(el) {
       <input id="search" type="search" placeholder="Rechercher (hanzi, pinyin, traduction)…  /"
         aria-label="Rechercher" value="${escape(state.q)}">
       <select id="deck-filter" aria-label="Filtrer par liste"></select>
+      <a class="button secondary" id="sheets-link" href="#/fiches"
+        title="Fiches d'entraînement à l'écriture des mots de la liste, à imprimer">✍ Fiches</a>
     </div>
 
     <div class="table-wrap">
@@ -128,6 +130,10 @@ export async function vocabView(el) {
     if (editor && !packs.some((p) => p.deck_id)) el.querySelector("#packs-panel").open = true;
   }
 
+  function updateSheetsLink() {
+    el.querySelector("#sheets-link").href = state.deck ? `#/listes/${state.deck}/fiches` : "#/fiches";
+  }
+
   async function load() {
     const [d, w, packs] = await Promise.all([api("/decks"), api("/words"), api("/packs")]);
     decks = d;
@@ -143,6 +149,7 @@ export async function vocabView(el) {
     const filter = el.querySelector("#deck-filter");
     filter.innerHTML = options("Toutes les listes");
     filter.value = state.deck;
+    updateSheetsLink();
     renderPacks(packs);
     renderWords();
   }
@@ -221,6 +228,7 @@ export async function vocabView(el) {
   el.querySelector("#deck-filter").addEventListener("change", (e) => {
     state.deck = e.target.value;
     state.page = 1;
+    updateSheetsLink();
     renderWords();
   });
   el.querySelector("thead").addEventListener("click", (e) => {

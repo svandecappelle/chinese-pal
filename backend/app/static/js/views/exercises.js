@@ -81,7 +81,9 @@ function card(ex) {
             title="Les mots défilent avec leur sens, leur prononciation et leur classificateur">Réviser</a>
           ${todo > 0
             ? `<a class="button" href="#/exercices/${ex.id}/test" title="Réponse attendue, notée">Test (${todo})</a>`
-            : '<span class="muted small">Test à jour ✓</span>'}`}
+            : '<span class="muted small">Test à jour ✓</span>'}
+          <a class="button secondary" href="#/exercices/${ex.id}/fiches"
+            title="Fiches d'entraînement à l'écriture, à imprimer">✍ Fiches</a>`}
         ${ex.can_edit ? `
           <a class="button secondary" href="#/exercices/${ex.id}/modifier">Modifier</a>
           <a class="button secondary" href="#/exercices/${ex.id}/suivi" title="Progression des élèves">Suivi</a>` : ""}

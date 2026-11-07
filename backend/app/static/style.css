@@ -69,7 +69,7 @@ section { margin-bottom: 2rem; }
 .stack { display: flex; flex-direction: column; gap: .9rem; }
 label { display: flex; flex-direction: column; gap: .25rem; font-size: .9rem; }
 label.check { flex-direction: row; align-items: center; gap: .5rem; font-size: 1rem; cursor: pointer; }
-input, select {
+input, select, textarea {
   padding: .5rem .6rem; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface); color: inherit; font: inherit; font-size: 1rem;
   transition: border-color .15s, box-shadow .15s;
@@ -132,6 +132,7 @@ td.hanzi { font-size: 1.5rem; white-space: nowrap; }
 .sort[data-dir="asc"]::after { content: " ▲"; font-size: .7em; }
 .sort[data-dir="desc"]::after { content: " ▼"; font-size: .7em; }
 .filters { margin-top: .5rem; }
+.filters > .button { flex: 0 0 auto; }
 
 /* Pagination */
 .pager {
@@ -431,3 +432,57 @@ td.due { color: var(--hard); font-weight: 600; }
 .study-card .measure { justify-content: center; margin-top: .75rem; }
 .write { margin-top: 1.25rem; }
 .write .stroke-box { touch-action: none; }
+
+/* Fiches d'écriture : aperçu « papier » (clair même en thème sombre), mesures en mm pour l'A4 */
+.sheet-options { padding: 1rem; }
+.sheet-options textarea { width: 100%; font-size: 1.3rem; resize: vertical; }
+.sheet-options .checks { gap: .5rem 1.25rem; }
+.sheet-options .checks > * { flex: 0 0 auto; }
+.pick-head { align-items: center; margin: .25rem 0; }
+.pick-head > * { flex: 0 0 auto; }
+.pick-list { max-height: 11rem; overflow-y: auto; margin-bottom: .75rem; }
+.pick-list .chip { font-size: 1.1rem; padding: .2rem .6rem; }
+.sheet-scroll { overflow-x: auto; margin: 0 -1rem; padding: 0 1rem; }
+.sheet {
+  --cell: 16mm; --ink: #111; --trace: #c9c9c9; --guide: #e2a3a3; --line: #b44;
+  width: 210mm; min-height: 297mm; margin: 0 auto; padding: 12mm;
+  background: #fff; color: var(--ink); box-shadow: var(--shadow); border: 1px solid var(--border);
+  font-family: system-ui, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+.sheet-empty { color: #777; text-align: center; margin-top: 3rem; }
+.sheet-head {
+  display: flex; align-items: baseline; gap: 1.5rem; flex-wrap: wrap;
+  padding-bottom: 3mm; margin-bottom: 4mm; border-bottom: 1px solid var(--ink); font-size: 11pt;
+}
+.sheet-head strong { flex: 1; font-size: 13pt; }
+.sheet-head .blank { display: inline-block; width: 45mm; border-bottom: 1px solid var(--ink); }
+.sheet-head .blank.short { width: 25mm; }
+.sheet-word { margin-bottom: 5mm; }
+.sheet-word-head { display: flex; align-items: baseline; gap: 3mm; margin-bottom: 1.5mm; font-size: 10pt; }
+.sheet-hanzi { font-size: 15pt; font-family: "KaiTi", "STKaiti", "Kaiti SC", serif; }
+.sheet-pinyin { font-weight: 600; }
+.sheet-meaning { color: #555; }
+.sheet-char { break-inside: avoid; page-break-inside: avoid; margin-bottom: 2.5mm; }
+.stroke-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 1mm; margin-bottom: 1.5mm; }
+.stroke-strip .cell { width: calc(var(--cell) * .55); height: calc(var(--cell) * .55); border: 1px solid #ddd; }
+.stroke-count { font-size: 8pt; color: #777; margin-left: 1mm; }
+.practice-row { display: flex; border-left: 1px solid var(--line); }
+.practice-row .cell { width: var(--cell); height: var(--cell); flex: 0 0 auto; border: solid var(--line); border-width: 1px 1px 1px 0; }
+.practice-row + .practice-row .cell { border-top: 0; }
+.sheet .cell { display: block; background: #fff; }
+.sheet .guide line { stroke: var(--guide); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.sheet .ink, .sheet .ink path { fill: var(--ink); }
+.sheet .trace, .sheet .trace path { fill: var(--trace); }
+.sheet .ink path.current { fill: var(--accent, #c0392b); }
+.sheet text { font-family: "KaiTi", "STKaiti", "Kaiti SC", "Noto Serif SC", serif; }
+
+@page { size: A4; margin: 12mm; }
+@media print {
+  body { background: #fff; }
+  header, .no-print { display: none !important; }
+  main { max-width: none; padding: 0; margin: 0; }
+  .sheet-scroll { overflow: visible; margin: 0; padding: 0; }
+  .sheet { width: auto; min-height: 0; padding: 0; margin: 0; border: 0; box-shadow: none; }
+  .sheet .ink path.current { fill: #c0392b; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

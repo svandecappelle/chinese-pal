@@ -9,6 +9,7 @@ import { playView } from "./views/play.js";
 import { progressView } from "./views/progress.js";
 import { studyView } from "./views/study.js";
 import { vocabView } from "./views/vocab.js";
+import { writingView } from "./views/writing.js";
 
 // [chemin, vue, onglet actif, accès]. Accès : null (libre), "user" (connecté) ou un droit.
 // Chaque vue reçoit (élément, paramètres) et peut renvoyer une fonction de nettoyage.
@@ -24,6 +25,10 @@ const routes = [
   [/^\/exercices\/(?<id>\d+)\/reviser$/, studyView, "exercises", null],
   [/^\/exercices\/(?<id>\d+)\/test$/, playView, "exercises", null],
   [/^\/vocabulaire$/, vocabView, "vocab", null],
+  // Fiches d'écriture à imprimer : caractères au choix, ou les mots d'un exercice ou d'une liste.
+  [/^\/fiches$/, writingView, "writing", null],
+  [/^\/exercices\/(?<id>\d+)\/fiches$/, writingView, "writing", null],
+  [/^\/listes\/(?<deck>\d+)\/fiches$/, writingView, "writing", null],
 ];
 
 const view = document.getElementById("view");
