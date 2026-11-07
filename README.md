@@ -180,8 +180,16 @@ Les deux claviers fonctionnent aussi sur téléphone, sans clavier physique.
 
 ## Listes prêtes à importer
 
-Dans **Vocabulaire**, les listes HSK 1 à 3 (HSK 2.0, ~600 mots avec traductions françaises et
-une phrase d'exemple par mot) s'importent en un clic. « Compléter » ajoute ce qui manque à une
+Dans **Vocabulaire**, les listes s'importent en un clic, chacune avec ses traductions
+françaises, une phrase d'exemple par mot et les classificateurs des noms :
+
+- **HSK** : niveaux 1 à 3 (HSK 2.0, ~600 mots) ;
+- **Thèmes** : animaux, temps et calendrier, météo, activités et loisirs, sports, pays et
+  nationalités, famille, corps et santé, nourriture et boissons, métiers, transports et ville,
+  vêtements et couleurs (~30 mots chacune).
+
+Une liste importée devient une liste de vocabulaire ordinaire : on en fait un exercice en la
+choisissant dans l'éditeur d'exercice. « Compléter » ajoute ce qui manque à une
 liste déjà importée. L'import est rejouable sans doublon : un mot déjà présent est simplement
 rattaché à la liste (un mot peut appartenir à plusieurs listes) et garde sa traduction.
 Sources et licence : [backend/app/data/README.md](backend/app/data/README.md).

@@ -300,6 +300,8 @@ label.small { font-size: .9rem; }
 }
 .pack .muted { flex: 1; }
 .pack .done { color: var(--good); font-weight: 600; }
+.pack-category { margin: .75rem 0 0; font-size: .95rem; color: var(--muted); }
+.pack-category:first-child { margin-top: 0; }
 
 /* Petits écrans */
 @media (max-width: 600px) {

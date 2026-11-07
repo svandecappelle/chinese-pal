@@ -31,7 +31,7 @@ export async function exercisesView(el) {
                  ou <a href="#/vocabulaire">parcours le vocabulaire</a>.</p>`
             : can("manage_courses")
             ? `<p>Aucun exercice pour l'instant.</p>
-               <p><a href="#/vocabulaire">Importe une liste HSK</a> puis crée ton premier exercice.</p>`
+               <p><a href="#/vocabulaire">Importe une liste prête</a> puis crée ton premier exercice.</p>`
             : "<p>Aucun exercice ne t'est encore attribué : ton professeur l'ajoutera à ta classe.</p>"}
         </div>`}
     </div>

@@ -109,7 +109,7 @@ export async function vocabView(el) {
   }
 
   function renderPacks(packs) {
-    el.querySelector("#packs").innerHTML = packs.map((p) => {
+    const pack = (p) => {
       const complete = p.imported_count >= p.word_count && p.with_examples >= p.example_count;
       return `<div class="pack">
         <strong>${escape(p.name)}</strong>
@@ -119,7 +119,11 @@ export async function vocabView(el) {
           ? '<span class="done">✓ importée</span>'
           : `<button type="button" data-pack="${p.id}">${p.deck_id ? "Compléter" : "Importer"}</button>`}
       </div>`;
-    }).join("");
+    };
+    const categories = [...new Set(packs.map((p) => p.category))];
+    el.querySelector("#packs").innerHTML = categories.map((category) => `
+      <h4 class="pack-category">${escape(category)}</h4>
+      ${packs.filter((p) => p.category === category).map(pack).join("")}`).join("");
     // Rien d'importé : on ouvre directement le panneau des listes.
     if (editor && !packs.some((p) => p.deck_id)) el.querySelector("#packs-panel").open = true;
   }

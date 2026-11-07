@@ -21,11 +21,30 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 # et, facultatif, data/<id>_exemples.tsv (colonnes hanzi, phrase, pinyin, traduction).
 # Les classificateurs des mots de toutes les listes sont dans data/classificateurs.tsv
 # (colonnes hanzi, pinyin, classificateurs séparés par des espaces).
-PACKS = {
-    "hsk1": ("HSK 1", "HSK 2.0 niveau 1"),
-    "hsk2": ("HSK 2", "HSK 2.0 niveau 2"),
-    "hsk3": ("HSK 3", "HSK 2.0 niveau 3"),
+# Listes prêtes à importer, par catégorie : (nom de la liste, description).
+PACK_CATEGORIES = {
+    "HSK": {
+        "hsk1": ("HSK 1", "HSK 2.0 niveau 1"),
+        "hsk2": ("HSK 2", "HSK 2.0 niveau 2"),
+        "hsk3": ("HSK 3", "HSK 2.0 niveau 3"),
+    },
+    "Thèmes": {
+        "animaux": ("Animaux", "Animaux familiers, de la ferme et sauvages"),
+        "temps": ("Temps et calendrier", "Jours, moments de la journée, saisons, dates"),
+        "meteo": ("Météo", "Le temps qu'il fait, les saisons et les températures"),
+        "loisirs": ("Activités et loisirs", "Passe-temps, sorties et lieux de loisirs"),
+        "sports": ("Sports", "Sports, compétitions et vocabulaire du sport"),
+        "pays": ("Pays et nationalités", "Pays, continents, habitants et langues"),
+        "famille": ("Famille", "Parents, frères et sœurs, grands-parents"),
+        "corps": ("Corps et santé", "Parties du corps, maladies et soins"),
+        "nourriture": ("Nourriture et boissons", "Plats, fruits, boissons et repas"),
+        "metiers": ("Métiers", "Professions et monde du travail"),
+        "transports": ("Transports et ville", "Moyens de transport, lieux et directions"),
+        "vetements": ("Vêtements et couleurs", "Habits, accessoires et couleurs"),
+    },
 }
+PACKS = {pack_id: pack for packs in PACK_CATEGORIES.values() for pack_id, pack in packs.items()}
+PACK_CATEGORY = {pack_id: category for category, packs in PACK_CATEGORIES.items() for pack_id in packs}
 
 
 class DeckIn(BaseModel):
@@ -238,6 +257,7 @@ def list_packs():
         rows = read_pack(pack_id)
         packs.append({
             "id": pack_id,
+            "category": PACK_CATEGORY[pack_id],
             "name": name,
             "description": description,
             "word_count": len(rows),
