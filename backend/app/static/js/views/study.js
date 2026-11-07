@@ -49,9 +49,11 @@ function shuffle(list) {
 }
 
 export async function studyView(el, { id }) {
-  const { exercise, words: allWords } = await api(`/exercises/${id}/words`);
+  // Sans exercice : les mots les plus ratés (depuis les statistiques).
+  const { exercise, words: allWords } = await api(id ? `/exercises/${id}/words` : "/stats/difficult-words");
   const settings = readSettings();
-  const positionKey = `chinese.study.${id}`;
+  const positionKey = `chinese.study.${id ?? "difficult"}`;
+  const testLink = id ? `<a href="#/exercices/${id}/test">Passer au test</a>` : '<a href="#/statistiques">Mes statistiques</a>';
   const focusWords = () => (FOCUS[settings.focus].only ? allWords.filter(FOCUS[settings.focus].only) : allWords);
   let words = focusWords();
   let index = 0;
@@ -68,7 +70,7 @@ export async function studyView(el, { id }) {
   bindSpeakButtons(el);
 
   if (!allWords.length) {
-    el.innerHTML = `<div class="empty"><p>Cet exercice ne contient encore aucun mot.</p>
+    el.innerHTML = `<div class="empty"><p>${id ? "Cet exercice ne contient encore aucun mot." : "Aucun mot raté ces 90 derniers jours."}</p>
       <p><a href="#/">Retour aux exercices</a></p></div>`;
     return;
   }
@@ -104,7 +106,7 @@ export async function studyView(el, { id }) {
     <p class="muted center small">
       Raccourcis : <kbd>←</kbd> <kbd>→</kbd> ou <kbd>Espace</kbd> (dévoiler puis suivant) · <kbd>A</kbd> écouter ·
       <kbd>T</kbd> traits · <kbd>P</kbd> défilement ·
-      <a href="#/exercices/${id}/test">Passer au test</a> · <a href="#/">Quitter</a>
+      ${testLink} · <a href="#/">Quitter</a>
     </p>`;
 
   const card = el.querySelector("#card");
@@ -204,7 +206,7 @@ export async function studyView(el, { id }) {
       <p>Tu as parcouru les ${words.length} mot(s) de l'exercice.</p>
       <div class="actions center-actions">
         <button type="button" class="secondary" id="again">Recommencer</button>
-        <a class="button" href="#/exercices/${id}/test">Passer au test</a>
+        ${testLink.replace("<a ", '<a class="button" ')}
       </div>`;
     card.querySelector("#again").addEventListener("click", () => go(0));
     el.querySelector("#next").disabled = true;

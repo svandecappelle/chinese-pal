@@ -1,14 +1,12 @@
 # Idées de fonctionnalités (à faire)
 
 Propositions restantes, classées par public. Déjà faits : dictée (écoute), exercices sur les
-phrases d'exemple, entraînement aux tons.
+phrases d'exemple, entraînement aux tons, statistiques personnelles, lecture assistée.
 
 ## Élèves
 
-- **Statistiques personnelles** : série de jours d'affilée, cartes faites par jour (calendrier),
-  mots maîtrisés, mots les plus ratés avec un bouton « retravailler ».
-- **Lecture assistée** : coller un texte chinois, voir le pinyin et le sens au survol de chaque mot
-  (segmentation par le dictionnaire), ajouter en un clic les mots inconnus au vocabulaire.
+- **Lecture assistée, suite** : reconnaître les noms propres (小明 est découpé 小 / 明) ; traduire
+  en français les sens de CC-CEDICT (aujourd'hui en anglais hors vocabulaire).
 
 ## Professeurs
 

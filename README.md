@@ -135,6 +135,11 @@ utile quand la vérification souple du sens se trompe.
   Un test contient les cartes dues + les nouvelles cartes du jour. Si l'exercice a plusieurs
   modes, l'élève choisit avant de commencer ce qu'il travaille (tracé, pinyin, tons…), avec le
   nombre de cartes de chacun ; le choix est mémorisé par exercice et se change en cours de test.
+- **Mes statistiques** (onglet **Statistiques**, pour un compte ou un invité) : jours d'affilée
+  (série en cours et meilleure), calendrier des réponses sur un an, réussite par mode sur 30 jours,
+  mots vus et maîtrisés (toutes leurs cartes à 21 jours ou plus), et les 20 mots les plus ratés
+  sur 90 jours. Ces mots se retravaillent en mode révision (« Retravailler ces mots ») ou se
+  remettent « à revoir » pour le prochain test (seulement dans les modes où ils ont été ratés).
 - Le « jour » est calculé en UTC.
 
 ## Prononciation, ordre des traits, exemples
@@ -162,6 +167,13 @@ utile quand la vérification souple du sens se trompe.
   taille des cases (12, 16 ou 20 mm), nombre de modèles grisés et de lignes, pinyin et sens
   affichés ou non (pour une dictée), caractères répétés ou non. Les tracés viennent des données de
   Hanzi Writer ; sans connexion, les caractères sont écrits avec la police, sans les étapes.
+- **Lecture assistée** (onglet **Lecture**) : on colle ou tape un texte chinois ; il est découpé
+  en mots d'après CC-CEDICT (le plus long mot connu d'abord), avec le pinyin au-dessus
+  ([reading.js](backend/app/static/js/views/reading.js), `POST /api/ime/lecture`). Toucher un mot
+  montre son sens : celui du vocabulaire (en français) s'il y est, sinon celui de CC-CEDICT (en
+  anglais). Les mots hors vocabulaire sont soulignés et listés ; avec le droit de gérer le
+  vocabulaire, on les y ajoute en donnant leur sens en français. Les noms propres (小明) sont
+  découpés caractère par caractère.
 - **Exemples** : une phrase par mot HSK (avec pinyin et traduction), affichée avec la réponse.
   On peut en ajouter ou en supprimer depuis la fiche d'un mot (clic sur une ligne du vocabulaire).
 
@@ -237,7 +249,7 @@ backend/
     db.py            pool de connexions, migrations
     config.py        configuration (variables d'environnement)
     routers/         routes API (compte, administration, vocabulaire, exercices, révisions,
-                     prononciation, saisie)
+                     statistiques, prononciation, saisie et lecture assistée)
     data/            listes importables (HSK) et leurs phrases d'exemple
     migrations/      scripts SQL versionnés
     static/          frontend
@@ -250,5 +262,6 @@ backend/
       js/answers.js  vérification souple d'un sens tapé
       js/ui.js       notifications, pagination
       js/views/      écrans (exercices, éditeur, révision, test, suivi, vocabulaire, fiche d'un mot,
-                     fiches d'écriture, connexion, compte, administration)
+                     fiches d'écriture, statistiques, lecture assistée, connexion, compte,
+                     administration)
 ```

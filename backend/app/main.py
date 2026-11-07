@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from .db import pool, run_migrations, wait_for_db
 from . import auth, ime
 from . import tts as speech
-from .routers import account, admin, exercises, ime as ime_router, reviews, tts, vocab
+from .routers import account, admin, exercises, ime as ime_router, reviews, stats, tts, vocab
 
 logging.basicConfig(level=logging.INFO)
 
@@ -33,6 +33,7 @@ app.include_router(admin.router)
 app.include_router(vocab.router)
 app.include_router(exercises.router)
 app.include_router(reviews.router)
+app.include_router(stats.router)
 app.include_router(tts.router)
 app.include_router(ime_router.router)
 

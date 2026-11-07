@@ -47,6 +47,9 @@ class Dictionary:
         self.classifiers: dict[str, list[str]] = {}
         self.char_syllables: dict[str, set[str]] = {}
         self.words: set[str] = set()
+        # Lecture la plus courante de chaque mot, et définitions (en anglais) par lecture.
+        self.best_reading: dict[str, str] = {}
+        self.definitions: dict[tuple[str, str], str] = {}
         self.lock = threading.Lock()
 
     def load(self) -> None:
@@ -74,6 +77,7 @@ class Dictionary:
                     main_reading[parts[0]] = parts[1]
 
         entries: dict[tuple[str, str], int] = {}
+        definitions_found: dict[tuple[str, str], tuple[bool, str]] = {}
         with self.cedict.open(encoding="utf-8") as lines:
             for line in lines:
                 match = CEDICT_LINE.match(line.strip())
@@ -93,6 +97,18 @@ class Dictionary:
                 ):
                     continue
                 pinyin = " ".join(syllables).replace("5", "")
+                # Sens lisibles : sans les renvois en pinyin ni les formes traditionnelles
+                # (« 神農|神农[Shen2 nong2] » → « 神农 »). Le sens d'un nom propre (pinyin en
+                # majuscule : dynastie, nom de famille) passe après celui du mot courant.
+                senses = [
+                    re.sub(r"\S+\|(\S+)", r"\1", re.sub(r"\s*\[[^\]]*\]", "", d)).strip()
+                    for d in definitions.split("/") if d and not d.startswith("CL:")
+                ]
+                senses = [d for d in senses if d]
+                proper = raw_pinyin[:1].isupper()
+                previous = definitions_found.get((hanzi, pinyin))
+                if senses and (previous is None or (previous[0] and not proper)):
+                    definitions_found[hanzi, pinyin] = (proper, "; ".join(senses[:4])[:200])
                 score = frequency.get(hanzi, 0)
                 if len(hanzi) == 1:
                     # Un caractère seul en majuscule est un nom de famille : lecture rare.
@@ -116,14 +132,24 @@ class Dictionary:
                 char_syllables.setdefault(char, set()).add(re.sub(r"[0-9]", "", syllable))
         self.char_syllables = char_syllables
         self.words = {hanzi for hanzi, _ in entries}
+        best: dict[str, tuple[int, str]] = {}
+        for (hanzi, pinyin), score in entries.items():
+            if hanzi not in best or score > best[hanzi][0]:
+                best[hanzi] = (score, pinyin)
+        self.best_reading = {hanzi: pinyin for hanzi, (_, pinyin) in best.items()}
+        self.definitions = {key: text for key, (_, text) in definitions_found.items()}
         self.by_key = by_key
         log.info("Dictionnaire de saisie chargé : %d entrées", len(entries))
 
     def reading_of(self, hanzi: str) -> str | None:
         """Lecture la plus fréquente d'un mot, chiffres de ton (« ben3 »), ou None."""
         self.load()
-        entries = [e for key in self.by_key.values() for e in key if e.hanzi == hanzi]
-        return max(entries, key=lambda e: e.frequency).pinyin if entries else None
+        return self.best_reading.get(hanzi)
+
+    def definition_of(self, hanzi: str, pinyin: str | None = None) -> str | None:
+        """Premiers sens (en anglais) d'un mot dans CC-CEDICT, pour sa lecture la plus courante."""
+        self.load()
+        return self.definitions.get((hanzi, pinyin or self.best_reading.get(hanzi, "")))
 
     def classifiers_of(self, hanzi: str) -> list[str]:
         """Classificateurs indiqués par CC-CEDICT pour un mot (les deux premiers)."""

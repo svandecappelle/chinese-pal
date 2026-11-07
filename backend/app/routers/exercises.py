@@ -345,28 +345,31 @@ def get_words(exercise_id: int, user: dict | None = Depends(auth.visitor)):
                            FROM cards ORDER BY word_id""",
             {"exercise_id": exercise_id, "user_id": None},
         ).fetchall()
-        examples = {
-            e["word_id"]: e for e in conn.execute(
-                """SELECT DISTINCT ON (word_id) word_id, hanzi, pinyin, translation
-                   FROM examples WHERE word_id = ANY(%s) ORDER BY word_id, id""",
-                ([w["word_id"] for w in words],),
-            )
-        }
-    return {
-        "exercise": exercise,
-        "words": [
-            {
-                "word_id": w["word_id"],
-                "hanzi": w["hanzi"],
-                "pinyin": w["pinyin"],
-                "translation": w["translation"],
-                "classifiers": [classifiers.described(c) for c in w["classifiers"]],
-                "measure": classifiers.measure(w["hanzi"], w["pinyin"], w["classifiers"]),
-                "example": examples.get(w["word_id"]),
-            }
-            for w in words
-        ],
+        return {"exercise": exercise, "words": study_words(conn, words)}
+
+
+def study_words(conn, words: list[dict]) -> list[dict]:
+    """Mots pour le mode révision (word_id, hanzi, pinyin, translation, classifiers) avec leur
+    classificateur décrit et une phrase d'exemple ; sert aussi aux mots ratés (statistiques)."""
+    examples = {
+        e["word_id"]: e for e in conn.execute(
+            """SELECT DISTINCT ON (word_id) word_id, hanzi, pinyin, translation
+               FROM examples WHERE word_id = ANY(%s) ORDER BY word_id, id""",
+            ([w["word_id"] for w in words],),
+        )
     }
+    return [
+        {
+            "word_id": w["word_id"],
+            "hanzi": w["hanzi"],
+            "pinyin": w["pinyin"],
+            "translation": w["translation"],
+            "classifiers": [classifiers.described(c) for c in w["classifiers"]],
+            "measure": classifiers.measure(w["hanzi"], w["pinyin"], w["classifiers"]),
+            "example": examples.get(w["word_id"]),
+        }
+        for w in words
+    ]
 
 
 @router.get("/{exercise_id}/progress")

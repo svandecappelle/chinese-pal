@@ -143,3 +143,31 @@ def cloze(sentence: str, word: str, pool: dict[str, list[str]], word_classifiers
     choices = [word, *(same_length + others)[:3]]
     random.shuffle(choices)
     return {"before": sentence[:at], "after": sentence[at + len(word):], "choices": choices}
+
+
+READING_MAX_WORD = 6
+
+
+def reading_tokens(text: str) -> list[tuple[str, bool]]:
+    """Découpe un texte pour la lecture assistée : [(morceau, est_un_mot_chinois)], sans rien
+    perdre (ponctuation, espaces, lettres et retours à la ligne restent en morceaux simples)."""
+    _, words = _known()
+    tokens: list[tuple[str, bool]] = []
+    i = 0
+    while i < len(text):
+        if HANZI.match(text[i]):
+            piece = text[i]
+            for size in range(READING_MAX_WORD, 1, -1):
+                candidate = text[i:i + size]
+                if len(candidate) == size and candidate in words:
+                    piece = candidate
+                    break
+            tokens.append((piece, True))
+            i += len(piece)
+        else:
+            j = i
+            while j < len(text) and not HANZI.match(text[j]):
+                j += 1
+            tokens.append((text[i:j], False))
+            i = j
+    return tokens

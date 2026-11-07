@@ -566,3 +566,70 @@ mark.miss { background: color-mix(in srgb, var(--again) 25%, transparent); color
   background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline;
   cursor: pointer; font: inherit;
 }
+
+/* Statistiques personnelles */
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .6rem; margin: .75rem 0 .25rem; }
+.stat-tile {
+  display: flex; flex-direction: column; gap: .1rem; padding: .7rem .8rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+}
+.stat-tile strong { font-size: 1.4rem; }
+.stat-icon { font-size: 1.1rem; }
+.stats-section { margin-top: 1rem; }
+.stats-section h3 small { font-weight: normal; font-size: .8rem; }
+.cal-scroll { overflow-x: auto; padding-bottom: .25rem; }
+.cal { display: inline-flex; flex-direction: column; gap: 3px; }
+.cal-months { display: grid; grid-template-columns: repeat(53, 13px); gap: 3px; font-size: .7rem; color: var(--muted); }
+.cal-months span { white-space: nowrap; }
+.cal-grid { display: grid; grid-template-rows: repeat(7, 13px); grid-auto-flow: column; grid-auto-columns: 13px; gap: 3px; }
+.cal-day { display: inline-block; width: 13px; height: 13px; border-radius: 3px; background: var(--surface-2); }
+.cal-day.future { background: transparent; }
+.cal-day.l1 { background: color-mix(in srgb, var(--accent) 30%, var(--surface-2)); }
+.cal-day.l2 { background: color-mix(in srgb, var(--accent) 55%, var(--surface-2)); }
+.cal-day.l3 { background: color-mix(in srgb, var(--accent) 78%, var(--surface-2)); }
+.cal-day.l4 { background: var(--accent); }
+.cal-legend { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; margin: .5rem 0 0; }
+.mode-stats { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .5rem; }
+.mode-stats li { display: grid; grid-template-columns: minmax(8rem, 14rem) 1fr 3.2rem; align-items: center; gap: .2rem .6rem; }
+.mode-stats li small { grid-column: 1 / -1; margin-top: -.3rem; }
+.mode-bar { height: .55rem; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.mode-bar span { display: block; height: 100%; background: var(--good); }
+.mode-rate { text-align: right; font-variant-numeric: tabular-nums; }
+.difficult-list { list-style: none; padding: 0; margin: .75rem 0 0; }
+.difficult-list li { display: flex; align-items: center; gap: .6rem; padding: .45rem 0; border-top: 1px solid var(--border); }
+.difficult-hanzi { font-size: 1.6rem; min-width: 3.2rem; }
+.difficult-word { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.difficult-misses { color: var(--again); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 480px) {
+  .stat-tiles { grid-template-columns: repeat(2, 1fr); }
+  .mode-stats li { grid-template-columns: 1fr 3rem; }
+  .mode-stats .mode-bar { grid-column: 1 / -1; grid-row: 2; }
+  .mode-stats li small { grid-row: 3; }
+}
+
+/* Lecture assistée */
+.reading-input textarea { width: 100%; font-size: 1.25rem; resize: vertical; }
+.reading-options { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin-top: .6rem; }
+.reading-options #read { margin-left: auto; }
+.reading { margin-top: 1rem; font-size: 1.5rem; line-height: 2.6; line-break: strict; }
+.rd-glue { white-space: nowrap; }
+.reading.no-pinyin { line-height: 1.9; }
+.reading.no-pinyin rt { display: none; }
+.rd-word {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0 .06em; margin: 0;
+  border-radius: 4px; cursor: pointer; line-height: inherit;
+}
+.rd-word:hover { background: var(--surface-2); }
+.rd-word.selected { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.reading.mark-unknown .rd-word.unknown ruby { text-decoration: underline dotted var(--accent); text-underline-offset: .25em; }
+.reading rt { font-size: .45em; color: var(--muted); letter-spacing: 0; }
+.rd-detail { position: sticky; bottom: .75rem; margin-top: .75rem; box-shadow: var(--shadow); }
+.rd-close { position: absolute; top: .4rem; right: .4rem; }
+.rd-head { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding-right: 2rem; }
+.rd-hanzi { font-size: 2.2rem; }
+.rd-pinyin { color: var(--accent); font-size: 1.1rem; }
+.rd-add { display: flex; gap: .5rem; flex-wrap: wrap; }
+.rd-add input { flex: 1; min-width: 10rem; }
+.reading-unknown { margin-top: 1rem; }
+.rd-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0; }
+.rd-chip { cursor: pointer; font-size: 1.05rem; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); }

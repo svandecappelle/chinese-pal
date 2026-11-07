@@ -7,6 +7,8 @@ import { editorView } from "./views/editor.js";
 import { loginView } from "./views/login.js";
 import { playView } from "./views/play.js";
 import { progressView } from "./views/progress.js";
+import { readingView } from "./views/reading.js";
+import { statsView } from "./views/stats.js";
 import { studyView } from "./views/study.js";
 import { vocabView } from "./views/vocab.js";
 import { writingView } from "./views/writing.js";
@@ -25,6 +27,10 @@ const routes = [
   [/^\/exercices\/(?<id>\d+)\/reviser$/, studyView, "exercises", null],
   [/^\/exercices\/(?<id>\d+)\/test$/, playView, "exercises", null],
   [/^\/vocabulaire$/, vocabView, "vocab", null],
+  // Statistiques personnelles (compte ou invité) et révision des mots les plus ratés.
+  [/^\/statistiques$/, statsView, "stats", null],
+  [/^\/lecture$/, readingView, "reading", null],
+  [/^\/statistiques\/reviser$/, studyView, "stats", null],
   // Fiches d'écriture à imprimer : caractères au choix, ou les mots d'un exercice ou d'une liste.
   [/^\/fiches$/, writingView, "writing", null],
   [/^\/exercices\/(?<id>\d+)\/fiches$/, writingView, "writing", null],
@@ -37,6 +43,7 @@ let cleanup = null;
 function renderHeader() {
   const user = session.user;
   document.querySelector("[data-nav=admin]").hidden = !can("manage_users");
+  document.querySelector("[data-nav=stats]").hidden = !user && !session.guest;
   document.getElementById("account").innerHTML = user
     ? `<a href="#/compte" data-nav="account" class="account-link" title="Mon compte">
          <span class="avatar" aria-hidden="true">${escape(displayName(user).slice(0, 1).toUpperCase())}</span>
