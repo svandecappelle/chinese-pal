@@ -6,8 +6,9 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
 from .db import pool, run_migrations, wait_for_db
-from .routers import exercises, reviews, tts, vocab
-from .tts import preload
+from . import ime
+from . import tts as speech
+from .routers import exercises, ime as ime_router, reviews, tts, vocab
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,7 +20,8 @@ async def lifespan(app: FastAPI):
     wait_for_db()
     run_migrations()
     pool.open()
-    preload()
+    speech.preload()
+    ime.preload()
     yield
     pool.close()
 
@@ -29,6 +31,7 @@ app.include_router(vocab.router)
 app.include_router(exercises.router)
 app.include_router(reviews.router)
 app.include_router(tts.router)
+app.include_router(ime_router.router)
 
 
 @app.middleware("http")

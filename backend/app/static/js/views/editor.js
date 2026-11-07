@@ -1,4 +1,5 @@
 import { api, escape, MODES } from "../api.js";
+import { attachKeyboard } from "../keyboard.js";
 import { bindPager, paginate, pagerHtml, toast } from "../ui.js";
 
 export async function editorView(el, { id }) {
@@ -147,6 +148,7 @@ export async function editorView(el, { id }) {
     updateSummary();
   });
 
+  attachKeyboard(el.querySelector("#word-filter"), "hanzi");
   el.querySelector("#word-filter").addEventListener("input", (e) => {
     pickState.q = e.target.value;
     pickState.page = 1;

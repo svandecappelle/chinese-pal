@@ -1,5 +1,6 @@
 import { api, escape, MODES } from "../api.js";
 import { bindSpeakButtons, speak, speakButton, stopSpeaking } from "../audio.js";
+import { attachKeyboard } from "../keyboard.js";
 import { checkPinyin, numbersToMarks } from "../pinyin.js";
 import { mountStrokes } from "../strokes.js";
 import { toast } from "../ui.js";
@@ -142,6 +143,7 @@ export async function playView(el, { id }) {
     if (typed) {
       const input = el.querySelector("#typed-input");
       const preview = el.querySelector("#typed-preview");
+      attachKeyboard(input, "pinyin");
       input.addEventListener("input", () => (preview.textContent = numbersToMarks(input.value)));
       el.querySelector("#typed").addEventListener("submit", (e) => {
         e.preventDefault();

@@ -1,5 +1,6 @@
 import { api, escape } from "../api.js";
 import { bindSpeakButtons, speakButton } from "../audio.js";
+import { attachKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
 import { bindPager, paginate, pagerHtml, remember, save, toast, withBusy } from "../ui.js";
 import { openWordDialog } from "./word-dialog.js";
@@ -197,7 +198,12 @@ export async function vocabView(el) {
     }
   });
 
+  const wordForm = el.querySelector("#word-form");
+  attachKeyboard(wordForm.elements.hanzi, "hanzi");
+  attachKeyboard(wordForm.elements.pinyin, "pinyin");
+
   const search = el.querySelector("#search");
+  attachKeyboard(search, "hanzi");
   search.addEventListener("input", () => {
     state.q = search.value;
     state.page = 1;

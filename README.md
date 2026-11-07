@@ -76,6 +76,24 @@ docker compose exec db psql -U chinese
 - **Exemples** : une phrase par mot HSK (avec pinyin et traduction), affichée avec la réponse.
   On peut en ajouter ou en supprimer depuis la fiche d'un mot (clic sur une ligne du vocabulaire).
 
+## Claviers chinois
+
+Les champs où l'on écrit du chinois ont un bouton qui ouvre un clavier en bas de l'écran
+([keyboard.js](backend/app/static/js/keyboard.js)) :
+
+- **汉 (caractères)** : on tape le pinyin sans tons (`nihao`, `zhongg`…) et on choisit parmi les
+  caractères proposés (`Espace` = premier, `1`–`9`, `-` / `=` pour changer de page, `Entrée` garde
+  les lettres, `Échap` ferme). Le pinyin non couvert reste à convertir (`nihaoma` → 你好, puis
+  « ma »). La ponctuation devient chinoise (`,` → `，`, `.` → `。`). Les candidats viennent de
+  [CC-CEDICT](https://cc-cedict.org) (CC BY-SA 4.0, téléchargé à la construction de l'image),
+  classés par fréquence d'usage, les mots du vocabulaire de l'app en premier
+  ([ime.py](backend/app/ime.py)).
+- **ǎ (pinyin)** : boutons des quatre tons et du ton neutre, appliqués à la syllabe qui précède le
+  curseur (`hao` + ǎ → `hǎo`, en remplaçant un ton déjà mis), et voyelles accentuées. Clavier
+  ouvert, un chiffre tapé après une syllabe devient son ton (`ni3` → `nǐ`).
+
+Les deux claviers fonctionnent aussi sur téléphone, sans clavier physique.
+
 ## Interface
 
 - Tableaux paginés (10 à 100 lignes), triables par colonne et filtrables ; la page, le tri et
@@ -103,14 +121,16 @@ backend/
     main.py          création de l'app, service du frontend
     srs.py           algorithme de répétition espacée
     tts.py           synthèse vocale (prononciation)
+    ime.py           caractères candidats pour un pinyin (clavier 汉)
     db.py            pool de connexions, migrations
     config.py        configuration (variables d'environnement)
-    routers/         routes API (vocabulaire, exercices, révisions, prononciation)
+    routers/         routes API (vocabulaire, exercices, révisions, prononciation, saisie)
     data/            listes importables (HSK) et leurs phrases d'exemple
     migrations/      scripts SQL versionnés
     static/          frontend
       js/api.js      appels API, libellés des modes
       js/pinyin.js   conversion et vérification du pinyin
+      js/keyboard.js claviers à l'écran (caractères, pinyin)
       js/audio.js    lecture de l'audio de prononciation
       js/strokes.js  ordre des traits (Hanzi Writer)
       js/ui.js       notifications, pagination

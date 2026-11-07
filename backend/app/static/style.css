@@ -314,3 +314,45 @@ label.small { font-size: .9rem; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* Claviers à l'écran (keyboard.js) */
+.kb-field { display: flex; gap: .25rem; align-items: stretch; min-width: 0; }
+.kb-field > input { flex: 1; min-width: 0; }
+.typed .kb-field { width: min(100%, 360px); }
+.typed .kb-field > input { width: auto; }
+.kb-toggle {
+  flex: 0 0 auto; padding: 0 .55rem; background: var(--surface-2); color: var(--muted);
+  border: 1px solid var(--border); font-size: 1rem; min-width: 2.3rem;
+}
+.kb-toggle:hover { background: var(--border); color: var(--fg); }
+.kb-toggle.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+body.kb-open { padding-bottom: var(--kb-height, 240px); }
+.kb-open .word-dialog { max-height: calc(100vh - var(--kb-height, 240px) - 1rem); margin-top: .5rem; }
+.keyboard {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 90;
+  width: min(760px, 100%); max-height: 60vh; overflow: auto;
+  display: flex; flex-direction: column; gap: .5rem; padding: .6rem .75rem .75rem;
+  background: var(--surface); border: 1px solid var(--border); border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 -4px 18px rgb(0 0 0 / .12);
+  color: var(--fg); text-align: left;
+}
+.keyboard[hidden] { display: none; }
+.kb-head { display: flex; align-items: center; gap: .6rem; }
+.kb-head > :last-child { margin-left: auto; }
+.kb-buffer { flex: 1; min-width: 0; font-size: 1.1rem; }
+.kb-tones, .kb-vowels { display: flex; flex-wrap: wrap; gap: .35rem; }
+.kb-tones button { font-size: 1.3rem; min-width: 3.4rem; gap: .3rem; }
+.kb-tones kbd { font-size: .65rem; }
+.kb-vowels button { font-size: 1.15rem; min-width: 2.4rem; padding: .35rem .5rem; }
+.kb-candidates { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 3.4rem; align-items: center; }
+.kb-candidate {
+  flex-direction: column; gap: 0; padding: .25rem .55rem; position: relative; min-width: 3.2rem;
+  background: var(--surface-2); color: var(--fg); border: 1px solid var(--border);
+}
+.kb-candidate:hover { background: var(--border); }
+.kb-candidate:first-child { border-color: var(--easy); }
+.kb-candidate kbd { position: absolute; top: 2px; left: 4px; font-size: .6rem; opacity: .6; border: 0; padding: 0; }
+.kb-hanzi { font-size: 1.45rem; line-height: 1.2; }
+.kb-candidate small { font-size: .7rem; color: var(--muted); }
+.kb-nav { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+.kb-nav button { padding: .2rem .7rem; }

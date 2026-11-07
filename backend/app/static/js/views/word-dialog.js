@@ -1,5 +1,6 @@
 import { api, escape } from "../api.js";
 import { bindSpeakButtons, speakButton, stopSpeaking } from "../audio.js";
+import { attachKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
 import { mountStrokes } from "../strokes.js";
 
@@ -76,7 +77,10 @@ export async function openWordDialog(wordId, deckNames, onChange) {
     onChange?.();
   });
 
-  dialog.querySelector("#example-form").addEventListener("submit", async (e) => {
+  const exampleForm = dialog.querySelector("#example-form");
+  attachKeyboard(exampleForm.elements.hanzi, "hanzi");
+  attachKeyboard(exampleForm.elements.pinyin, "pinyin");
+  exampleForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
     try {
