@@ -5,6 +5,10 @@ export async function api(path, options = {}) {
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
   if (!res.ok) {
+    // Session expirée ou fermée ailleurs : l'application renvoie vers la connexion.
+    if (res.status === 401 && path !== "/account/login") {
+      window.dispatchEvent(new Event("session-expired"));
+    }
     const body = await res.json().catch(() => ({}));
     const detail = Array.isArray(body.detail)
       ? body.detail.map((d) => d.msg).join(", ")

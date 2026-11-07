@@ -1,16 +1,24 @@
 import { api, escape, MODES } from "../api.js";
 import { attachKeyboard } from "../keyboard.js";
+import { displayName } from "../session.js";
 import { bindPager, paginate, pagerHtml, toast } from "../ui.js";
 
 export async function editorView(el, { id }) {
-  const [decks, words, exercise] = await Promise.all([
+  const [decks, words, groups, exercise] = await Promise.all([
     api("/decks"),
     api("/words"),
+    api("/admin/groups"),
     id
       ? api(`/exercises/${id}`)
       : Promise.resolve({ name: "", description: "", modes: ["hanzi_to_meaning"],
-          new_per_day: 10, all_words: false, deck_ids: [], word_ids: [] }),
+          new_per_day: 10, all_words: false, deck_ids: [], word_ids: [],
+          everyone: false, group_ids: [] }),
   ]);
+  if (id && !exercise.can_edit) {
+    el.innerHTML = `<div class="empty"><p>Seul l'auteur de cet exercice (ou un administrateur) peut le modifier.</p>
+      <p><a href="#/">Retour aux exercices</a></p></div>`;
+    return;
+  }
 
   // Mots choisis un par un : gardés hors du DOM pour survivre au changement de page.
   const selected = new Set(exercise.word_ids);
@@ -88,6 +96,25 @@ export async function editorView(el, { id }) {
         </div>
       </fieldset>
 
+      <fieldset>
+        <legend>Attribué à</legend>
+        <label class="check">
+          <input type="checkbox" name="everyone" ${exercise.everyone ? "checked" : ""}>
+          Tous les comptes
+        </label>
+        <div id="audience">
+          <p class="muted small">Les membres des groupes cochés le voient dans leurs exercices ; chacun a sa propre progression.
+            ${exercise.owner_username ? `Auteur : ${escape(displayName({ username: exercise.owner_username, display_name: exercise.owner_name }))}.` : ""}</p>
+          <div class="chips">
+            ${groups.map((g) => `
+              <label class="chip">
+                <input type="checkbox" name="group" value="${g.id}" ${exercise.group_ids.includes(g.id) ? "checked" : ""}>
+                ${escape(g.name)} <span class="muted">${g.member_ids.length}</span>
+              </label>`).join("") || '<p class="muted small">Aucun groupe : l\'administrateur les crée dans « Administration ».</p>'}
+          </div>
+        </div>
+      </fieldset>
+
       <div class="sticky-footer">
         <p id="summary" class="muted"></p>
         <div class="actions">
@@ -131,6 +158,7 @@ export async function editorView(el, { id }) {
   function updateSummary() {
     const allWords = form.elements.all_words.checked;
     el.querySelector("#selection").hidden = allWords;
+    el.querySelector("#audience").hidden = form.elements.everyone.checked;
     let count = words.length;
     if (!allWords) {
       const deckIds = new Set(checkedValues("deck").map(Number));
@@ -192,6 +220,8 @@ export async function editorView(el, { id }) {
       all_words: form.elements.all_words.checked,
       deck_ids: checkedValues("deck").map(Number),
       word_ids: [...selected],
+      everyone: form.elements.everyone.checked,
+      group_ids: form.elements.everyone.checked ? [] : checkedValues("group").map(Number),
     };
     if (!body.modes.length) {
       toast("Choisis au moins un mode de révision.", "error");
@@ -207,7 +237,7 @@ export async function editorView(el, { id }) {
   });
 
   el.querySelector("#delete")?.addEventListener("click", async () => {
-    if (!confirm("Supprimer cet exercice ? (la progression des mots est conservée)")) return;
+    if (!confirm("Supprimer cet exercice pour tous ses élèves ? (la progression des mots est conservée)")) return;
     await api(`/exercises/${id}`, { method: "DELETE" });
     toast("Exercice supprimé");
     location.hash = "#/";

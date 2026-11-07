@@ -33,4 +33,6 @@ RUN useradd --system --uid 1001 appuser
 USER appuser
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --proxy-headers : derrière nginx, l'app sait que la requête est en HTTPS (cookies « Secure »).
+# Le port n'est publié que sur 127.0.0.1 : seul nginx peut envoyer ces en-têtes.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

@@ -2,15 +2,18 @@ import csv
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from pydantic import BaseModel, Field
 
-from .. import classifiers
+from .. import auth, classifiers
 from ..db import pool
 from ..ime import dictionary
 
 router = APIRouter(prefix="/api", tags=["vocabulaire"])
+
+# Lecture libre ; toute modification demande le droit « manage_vocab ».
+VocabEditor = Annotated[dict, Depends(auth.require("manage_vocab"))]
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
@@ -92,7 +95,7 @@ def list_decks():
 
 
 @router.post("/decks", status_code=201)
-def create_deck(deck: DeckIn):
+def create_deck(deck: DeckIn, _: VocabEditor):
     try:
         with pool.connection() as conn:
             return conn.execute(
@@ -120,7 +123,7 @@ def list_words(deck_id: int | None = None):
 
 
 @router.post("/words", status_code=201)
-def create_word(word: WordIn):
+def create_word(word: WordIn, _: VocabEditor):
     params = word.model_dump()
     if word.classifiers is None:
         params["classifiers"] = dictionary_classifiers(word.hanzi)
@@ -169,7 +172,7 @@ def get_word(word_id: int):
 
 
 @router.put("/words/{word_id}/classifiers")
-def set_classifiers(word_id: int, data: ClassifiersIn):
+def set_classifiers(word_id: int, data: ClassifiersIn, _: VocabEditor):
     """Remplace les classificateurs d'un mot (liste vide : aucun)."""
     with pool.connection() as conn:
         word = conn.execute(
@@ -184,7 +187,7 @@ def set_classifiers(word_id: int, data: ClassifiersIn):
 
 
 @router.post("/words/{word_id}/examples", status_code=201)
-def create_example(word_id: int, example: ExampleIn):
+def create_example(word_id: int, example: ExampleIn, _: VocabEditor):
     try:
         with pool.connection() as conn:
             return conn.execute(
@@ -200,14 +203,14 @@ def create_example(word_id: int, example: ExampleIn):
 
 
 @router.delete("/examples/{example_id}", status_code=204)
-def delete_example(example_id: int):
+def delete_example(example_id: int, _: VocabEditor):
     with pool.connection() as conn:
         if conn.execute("DELETE FROM examples WHERE id = %s", (example_id,)).rowcount == 0:
             raise HTTPException(404, "Exemple introuvable")
 
 
 @router.delete("/words/{word_id}", status_code=204)
-def delete_word(word_id: int):
+def delete_word(word_id: int, _: VocabEditor):
     with pool.connection() as conn:
         if conn.execute("DELETE FROM words WHERE id = %s", (word_id,)).rowcount == 0:
             raise HTTPException(404, "Mot introuvable")
@@ -249,7 +252,7 @@ def list_packs():
 
 
 @router.post("/packs/{pack_id}/import")
-def import_pack(pack_id: str):
+def import_pack(pack_id: str, _: VocabEditor):
     """Importe une liste (idempotent) : crée la liste, ajoute les mots absents, rattache à la
     liste tous les mots du fichier, y compris ceux déjà présents (leur traduction est conservée),
     et ajoute les phrases d'exemple et les classificateurs manquants."""

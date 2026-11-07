@@ -75,6 +75,10 @@ else
   ensure POSTGRES_PASSWORD "$(openssl rand -hex 24)" "Mot de passe de la base, généré à l'installation."
 fi
 ensure APP_PORT "8000" "Port local de l'application (nginx le relaie ; jamais exposé directement)."
+# Premier administrateur : lu une seule fois, quand l'application crée le compte. Le changer
+# ensuite ici n'a aucun effet : passe par « Mon compte » ou « make password ACCOUNT=admin ».
+ensure ADMIN_USERNAME "admin" "Premier administrateur (utilisé seulement à la création du compte)."
+ensure ADMIN_PASSWORD "$(openssl rand -base64 12 | tr '+/' '-_')"
 
 # ---------------------------------------------------------------- 2. conteneurs
 
@@ -211,4 +215,6 @@ printf '\n'
 bold "Terminé."
 if [ "$SKIP_TLS" = "1" ]; then info "Ouvre http://$DOMAIN/"; else info "Ouvre https://$DOMAIN/"; fi
 info "Mise à jour : make upgrade · sauvegarde : make backup"
-warn "L'application n'a pas de comptes : toute personne qui connaît l'adresse y a accès."
+info "Connexion : $(env_value ADMIN_USERNAME admin) / mot de passe ADMIN_PASSWORD de .env"
+info "  (si le compte existait déjà, il garde son mot de passe ; oublié : make password ACCOUNT=admin)"
+info "Crée ensuite les comptes des professeurs et des élèves dans « Administration »."

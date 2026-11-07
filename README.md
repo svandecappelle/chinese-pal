@@ -22,6 +22,11 @@ podman compose up -d --build
 
 Puis ouvrir http://localhost:8000 (doc de l'API : http://localhost:8000/docs).
 
+Au premier démarrage, l'application crée le compte administrateur `admin` et écrit son mot de
+passe dans le journal : `docker compose logs app` (ou `podman compose logs app`). Pour choisir
+ce mot de passe, mettre `ADMIN_PASSWORD=...` dans `.env` avant le premier démarrage. Oublié :
+`make password ACCOUNT=admin` en génère un nouveau.
+
 Arrêter : `docker compose down` / `podman compose down`.
 Repartir d'une base vide : ajouter `-v` pour supprimer le volume.
 
@@ -43,6 +48,31 @@ Détails, sauvegardes et prérequis : [deploy/README.md](deploy/README.md).
 
 Les valeurs par défaut fonctionnent telles quelles. Pour les changer (ports, identifiants), copier
 `.env.example` en `.env` et l'éditer.
+
+## Comptes et droits
+
+Le vocabulaire se consulte sans compte ; réviser et modifier demandent de se connecter. Il n'y a
+pas d'inscription : les comptes sont créés dans **Administration** (un mot de passe est généré et
+affiché une fois ; chacun le change ensuite dans « Mon compte »).
+
+Les **droits** sont portés par les **groupes** ; un administrateur les a tous :
+
+| Droit | Permet |
+|---|---|
+| Ajouter et modifier le vocabulaire | mots, listes, exemples, classificateurs, import des listes HSK |
+| Créer des exercices et les attribuer | créer ses exercices, les attribuer à des groupes, suivre les élèves |
+| Gérer les comptes et les groupes | écran Administration (seul un administrateur nomme un administrateur) |
+
+Deux groupes existent au départ : **Professeurs** (vocabulaire + exercices) et **Élèves** (aucun
+droit). Un groupe sert aussi de **classe** : un professeur attribue son exercice (son « cours »)
+à des groupes, ou à tous les comptes, et ses membres le voient dans leurs exercices. Chacun a sa
+propre progression ; l'auteur suit celle de ses élèves (bouton **Suivi**). Seul l'auteur d'un
+exercice (ou un administrateur) peut le modifier.
+
+Sécurité : mots de passe hachés avec scrypt, session dans un cookie `HttpOnly` / `SameSite=Lax`
+(`Secure` derrière HTTPS), 30 jours glissants ; trop d'échecs de connexion bloquent l'identifiant
+15 minutes. Changer son mot de passe déconnecte ses autres appareils ; désactiver un compte le
+déconnecte aussitôt et garde sa progression.
 
 ## Base de données
 
@@ -146,21 +176,26 @@ backend/
   requirements.txt
   app/
     main.py          création de l'app, service du frontend
+    auth.py          comptes : mots de passe, sessions, droits, premier administrateur
+    cli.py           commandes d'exploitation (make password)
     srs.py           algorithme de répétition espacée
     tts.py           synthèse vocale (prononciation)
     ime.py           caractères candidats pour un pinyin (clavier 汉)
     classifiers.py   classificateurs : pinyin, « 一本书 », choix du mode de révision
     db.py            pool de connexions, migrations
     config.py        configuration (variables d'environnement)
-    routers/         routes API (vocabulaire, exercices, révisions, prononciation, saisie)
+    routers/         routes API (compte, administration, vocabulaire, exercices, révisions,
+                     prononciation, saisie)
     data/            listes importables (HSK) et leurs phrases d'exemple
     migrations/      scripts SQL versionnés
     static/          frontend
       js/api.js      appels API, libellés des modes
+      js/session.js  utilisateur connecté et ses droits
       js/pinyin.js   conversion et vérification du pinyin
       js/keyboard.js claviers à l'écran (caractères, pinyin)
       js/audio.js    lecture de l'audio de prononciation
       js/strokes.js  ordre des traits (Hanzi Writer)
       js/ui.js       notifications, pagination
-      js/views/      écrans (exercices, éditeur, révision, vocabulaire, fiche d'un mot)
+      js/views/      écrans (exercices, éditeur, révision, suivi, vocabulaire, fiche d'un mot,
+                     connexion, compte, administration)
 ```

@@ -29,6 +29,14 @@ fi
 step "3/4  Reconstruction et redémarrage"
 $COMPOSE up -d --build
 wait_healthy
+# Passage à une version avec comptes : l'application crée l'administrateur et écrit son
+# mot de passe dans le journal (ou prend ADMIN_PASSWORD de .env).
+created="$($COMPOSE logs --since 10m app 2>/dev/null | grep -A3 "Compte administrateur créé" | sed 's/^[^|]*| *//' || true)"
+if [ -n "$created" ]; then
+  warn "premier compte administrateur créé (à noter, il ne sera plus affiché) :"
+  printf '%s
+' "$created" | sed 's/^/      /' >&2
+fi
 # Les anciennes images restent sinon sur le disque à chaque mise à jour.
 $RUNTIME image prune -f >/dev/null 2>&1 || true
 

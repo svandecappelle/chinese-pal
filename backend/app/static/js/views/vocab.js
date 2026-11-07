@@ -2,6 +2,7 @@ import { api, escape } from "../api.js";
 import { bindSpeakButtons, speakButton } from "../audio.js";
 import { attachKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
+import { can } from "../session.js";
 import { bindPager, paginate, pagerHtml, remember, save, toast, withBusy } from "../ui.js";
 import { openWordDialog } from "./word-dialog.js";
 
@@ -15,22 +16,24 @@ const SORTS = {
 
 export async function vocabView(el) {
   const state = remember(STATE_KEY, { q: "", deck: "", sort: "id", desc: false, page: 1, size: 25 });
+  // Lecture libre ; ajouter, importer et supprimer demandent le droit « manage_vocab ».
+  const editor = can("manage_vocab");
 
   el.innerHTML = `
     <div class="toolbar">
       <h2>Vocabulaire <span id="total" class="muted small"></span></h2>
-      <div class="actions">
+      <div class="actions" ${editor ? "" : "hidden"}>
         <button type="button" class="secondary" data-toggle="packs-panel">📦 Listes prêtes</button>
         <button type="button" data-toggle="add-panel">+ Ajouter un mot</button>
       </div>
     </div>
 
-    <details id="packs-panel" class="panel">
+    <details id="packs-panel" class="panel" ${editor ? "" : "hidden"}>
       <summary>Listes prêtes à importer</summary>
       <div id="packs" class="packs"></div>
     </details>
 
-    <details id="add-panel" class="panel">
+    <details id="add-panel" class="panel" ${editor ? "" : "hidden"}>
       <summary>Ajouter un mot ou une liste</summary>
       <form id="word-form" class="row">
         <input name="hanzi" placeholder="汉字" required aria-label="Hanzi">
@@ -98,7 +101,7 @@ export async function vocabView(el) {
         <td>${escape(w.translation)}</td>
         <td class="hide-narrow hanzi-sm">${w.classifiers.map(escape).join(" ")}</td>
         <td class="hide-narrow">${w.deck_ids.map((id) => `<span class="tag">${escape(deckName[id])}</span>`).join(" ")}</td>
-        <td class="actions-col"><button type="button" class="link" data-delete="${w.id}" title="Supprimer" aria-label="Supprimer ${escape(w.hanzi)}">✕</button></td>
+        <td class="actions-col">${editor ? `<button type="button" class="link" data-delete="${w.id}" title="Supprimer" aria-label="Supprimer ${escape(w.hanzi)}">✕</button>` : ""}</td>
       </tr>`).join("") || `<tr><td colspan="6" class="muted center">${
         words.length ? "Aucun mot ne correspond à la recherche." : "Aucun mot : importe une liste ou ajoute un mot."
       }</td></tr>`;
@@ -118,7 +121,7 @@ export async function vocabView(el) {
       </div>`;
     }).join("");
     // Rien d'importé : on ouvre directement le panneau des listes.
-    if (!packs.some((p) => p.deck_id)) el.querySelector("#packs-panel").open = true;
+    if (editor && !packs.some((p) => p.deck_id)) el.querySelector("#packs-panel").open = true;
   }
 
   async function load() {

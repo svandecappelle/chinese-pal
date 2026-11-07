@@ -9,7 +9,7 @@ APP_PORT := $(shell grep -E '^APP_PORT=' .env 2>/dev/null | cut -d= -f2)
 APP_PORT := $(or $(APP_PORT),8000)
 
 .DEFAULT_GOAL := help
-.PHONY: help install upgrade up down restart logs ps build health backup restore shell-db
+.PHONY: help install upgrade up down restart logs ps build health backup restore shell-db password
 
 help: ## Affiche cette aide
 	@echo "汉语 · Révision de vocabulaire chinois"
@@ -58,6 +58,12 @@ backup: ## Sauvegarde la base dans backups/
 
 restore: ## Restaure une sauvegarde (FILE=backups/....sql.gz), remplace la base
 	@bash deploy/restore.sh "$(FILE)"
+
+# ------------------------------------------------------------------ comptes
+
+password: ## Nouveau mot de passe pour un compte (ACCOUNT=admin ; le crée administrateur s'il manque)
+	@test -n "$(ACCOUNT)" || (echo "Usage : make password ACCOUNT=identifiant" && exit 1)
+	$(COMPOSE) exec app python -m app.cli password "$(ACCOUNT)"
 
 shell-db: ## Ouvre psql sur la base
 	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" "$$POSTGRES_DB"'

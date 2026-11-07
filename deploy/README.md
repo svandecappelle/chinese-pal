@@ -24,8 +24,9 @@ make install DOMAIN=chinois.example.com EMAIL=toi@example.com
 
 [install.sh](install.sh) fait, dans l'ordre :
 
-1. **Configuration** : crée `.env` (droits 600) avec le domaine et un mot de passe de base
-   généré. Un `.env` existant garde ses valeurs : relancer ne change jamais un secret.
+1. **Configuration** : crée `.env` (droits 600) avec le domaine, un mot de passe de base et
+   celui du premier administrateur (`ADMIN_USERNAME`, `ADMIN_PASSWORD`), générés. Un `.env`
+   existant garde ses valeurs : relancer ne change jamais un secret.
 2. **Conteneurs** : construit l'image (le modèle vocal et le dictionnaire sont téléchargés à ce
    moment), démarre, attend que l'application réponde, et vérifie que ni l'application ni
    PostgreSQL n'écoutent ailleurs que sur `127.0.0.1`.
@@ -43,6 +44,10 @@ Options : `SKIP_TLS=1` sert en HTTP sans certificat (derrière un autre proxy qu
 
 Relancer `make install` (sans arguments : le domaine est dans `.env`) applique une nouvelle
 version de la configuration nginx.
+
+À la fin, connecte-toi avec `admin` et le mot de passe `ADMIN_PASSWORD` de `.env`, change-le
+dans « Mon compte », puis crée les comptes dans **Administration**. `ADMIN_PASSWORD` ne sert
+qu'à la création du compte : le modifier ensuite dans `.env` n'a aucun effet.
 
 ## Mise à jour
 
@@ -71,14 +76,20 @@ quotidienne, une ligne de `crontab -e` :
 
 Pense aussi à copier `backups/` ailleurs que sur le serveur.
 
+Mise à jour depuis une version sans comptes : la progression existante revient au compte
+`admin`, créé au redémarrage ; `make upgrade` affiche son mot de passe généré (à noter).
+
 ## Au quotidien
 
 `make` affiche toutes les commandes : `logs`, `ps`, `restart`, `health`, `shell-db`…
 
+Mot de passe oublié (y compris celui de l'administrateur) : `make password ACCOUNT=identifiant`
+en génère un nouveau et ferme les sessions du compte ; si le compte n'existe pas, il est créé
+administrateur.
+
 ## À savoir
 
-- L'application n'a pas de comptes utilisateurs : toute personne qui connaît l'adresse peut
-  réviser, ajouter ou supprimer des mots. Pour la réserver, ajoute une authentification HTTP
-  dans nginx (`auth_basic`) ou attends la gestion des comptes.
+- Le vocabulaire est consultable sans compte ; réviser et modifier demandent une connexion.
+  Pour tout réserver, ajoute une authentification HTTP dans nginx (`auth_basic`).
 - La base n'est joignable que depuis le serveur (`127.0.0.1:5432`) ; à distance, passe par un
   tunnel SSH : `ssh -L 5432:127.0.0.1:5432 serveur`.

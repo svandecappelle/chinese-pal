@@ -2,6 +2,7 @@ import { api, escape } from "../api.js";
 import { bindSpeakButtons, speakButton, stopSpeaking } from "../audio.js";
 import { attachKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
+import { can } from "../session.js";
 import { mountStrokes } from "../strokes.js";
 import { toast } from "../ui.js";
 
@@ -9,6 +10,7 @@ import { toast } from "../ui.js";
 // `onChange` est appelé après l'ajout ou la suppression d'un exemple.
 export async function openWordDialog(wordId, deckNames, onChange) {
   const word = await api(`/words/${wordId}`);
+  const editor = can("manage_vocab");
   const dialog = document.createElement("dialog");
   dialog.className = "word-dialog";
   document.body.append(dialog);
@@ -27,7 +29,7 @@ export async function openWordDialog(wordId, deckNames, onChange) {
 
     <h3>Classificateur <small class="muted">量词</small></h3>
     <div id="measure" class="measure"></div>
-    <form id="classifier-form" class="row">
+    <form id="classifier-form" class="row" ${editor ? "" : "hidden"}>
       <input name="classifiers" value="${escape(word.classifiers.join(" "))}"
         placeholder="ex. 本 (plusieurs : séparés par des espaces)" aria-label="Classificateurs">
       <button type="submit" class="secondary">Enregistrer</button>
@@ -43,7 +45,7 @@ export async function openWordDialog(wordId, deckNames, onChange) {
 
     <h3>Exemples</h3>
     <ul id="examples" class="examples"></ul>
-    <form id="example-form" class="stack">
+    <form id="example-form" class="stack" ${editor ? "" : "hidden"}>
       <input name="hanzi" placeholder="Phrase en chinois" required>
       <div class="row">
         <input name="pinyin" placeholder="pinyin (ex. wo3 ai4 ni3)">
@@ -72,7 +74,7 @@ export async function openWordDialog(wordId, deckNames, onChange) {
         <div>${escape(e.hanzi)} ${speakButton(e.hanzi, { label: "Écouter la phrase" })}</div>
         <div class="muted">${escape(e.pinyin)}</div>
         <div>${escape(e.translation)}</div>
-        <button type="button" class="link" data-delete="${e.id}" title="Supprimer l'exemple">✕</button>
+        ${editor ? `<button type="button" class="link" data-delete="${e.id}" title="Supprimer l'exemple">✕</button>` : ""}
       </li>`).join("") || '<li class="muted">Aucun exemple pour ce mot.</li>';
   }
   renderExamples();
