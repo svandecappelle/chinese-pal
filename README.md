@@ -96,20 +96,34 @@ docker compose exec db psql -U chinese
 
 ## Fonctionnement des révisions
 
-- Une **carte** = un mot + un mode de révision :
-  - auto-évalués : 汉字 → sens, pinyin → 汉字 + sens, écoute → 汉字 + sens, sens → 汉字 ;
-  - classificateur : on voit un nom (一 ？ 书) et on choisit le bon classificateur parmi quatre ;
-    seuls les mots qui en ont un forment des cartes ;
-  - saisie vérifiée automatiquement : 汉字 → pinyin, sens → pinyin. Le pinyin se tape avec des
-    chiffres (`ni3 hao3` → `nǐ hǎo`, `lv4` → `lǜ`, ton neutre sans chiffre) ou directement avec
-    accents ; une réponse aux bonnes syllabes mais aux tons faux est signalée comme telle
-    ([pinyin.js](backend/app/static/js/pinyin.js)).
+Un exercice se lance de deux façons :
+
+- **Réviser** : sans pression, les mots défilent un par un avec leurs caractères, leur pinyin,
+  leur sens, leur prononciation, leur classificateur et une phrase d'exemple. Rien n'est noté.
+  `←` / `→` ou `Espace` (glisser sur téléphone), défilement automatique (3 à 12 s par mot),
+  mélange, prononciation automatique.
+- **Test** : chaque carte attend une réponse, vérifiée puis notée pour la répétition espacée.
+
+Une **carte** = un mot + un mode. Ce que l'élève fournit en test :
+
+| Mode | Réponse |
+|---|---|
+| 汉字 → sens, pinyin → sens, écoute → sens | le sens tapé en français ; un des sens suffit, accents, articles et précisions entre parenthèses facultatifs, une faute de frappe est tolérée ([answers.js](backend/app/static/js/answers.js)) |
+| sens → 汉字 | les caractères **tracés** trait par trait, sans modèle, dans l'ordre des traits (Hanzi Writer) ; après 3 essais ratés le trait attendu clignote, « Je ne sais pas » montre la réponse |
+| 汉字 → pinyin, sens → pinyin | le pinyin tapé avec les tons : chiffres (`ni3 hao3` → `nǐ hǎo`, `lv4` → `lǜ`, ton neutre sans chiffre) ou accents ; bonnes syllabes mais tons faux signalés ([pinyin.js](backend/app/static/js/pinyin.js)) |
+| classificateur | le bon classificateur parmi quatre (一 ？ 书) ; seuls les mots qui en ont un forment des cartes |
+
+Quand le mot présenté est en chinois (ou que la réponse n'est pas sa prononciation), un bouton 🔊
+(touche `A`) permet de l'entendre. La note est **suggérée** d'après la réponse (sans faute → Bien,
+quelques erreurs de tracé → Difficile, faux → À revoir) ; l'élève peut en choisir une autre,
+utile quand la vérification souple du sens se trompe.
+
 - **Répétition espacée** ([srs.py](backend/app/srs.py)) : variante de SM-2 à 4 boutons
-  (À revoir / Difficile / Bien / Facile, raccourcis `Espace` puis `1`–`4`). La progression d'une
-  carte est commune à tous les exercices.
+  (À revoir / Difficile / Bien / Facile, `Entrée` valide la note suggérée, `1`–`4` en choisit une).
+  La progression d'une carte est commune à tous les exercices.
 - Un **exercice** choisit ses mots (tout le vocabulaire, des listes entières et/ou des mots
   choisis un par un), un ou plusieurs modes de révision et un nombre de nouvelles cartes par jour.
-  Une session contient les cartes dues + les nouvelles cartes du jour.
+  Un test contient les cartes dues + les nouvelles cartes du jour.
 - Le « jour » est calculé en UTC.
 
 ## Prononciation, ordre des traits, exemples
@@ -161,8 +175,8 @@ Les deux claviers fonctionnent aussi sur téléphone, sans clavier physique.
 - Tableaux paginés (10 à 100 lignes), triables par colonne et filtrables ; la page, le tri et
   les filtres sont gardés le temps de l'onglet. `/` place le curseur dans la recherche.
 - Clic sur un mot du vocabulaire : fiche avec prononciation, traits et exemples.
-- En révision : `A` écoute, `T` ordre des traits, `Entrée` valide la note suggérée, case
-  « 🔊 auto » pour prononcer chaque réponse.
+- En révision comme en test : `A` écoute, `T` ordre des traits, case « 🔊 auto » pour prononcer
+  chaque mot (en test : quand la réponse s'affiche).
 
 ## Listes prêtes à importer
 
@@ -201,8 +215,9 @@ backend/
       js/pinyin.js   conversion et vérification du pinyin
       js/keyboard.js claviers à l'écran (caractères, pinyin)
       js/audio.js    lecture de l'audio de prononciation
-      js/strokes.js  ordre des traits (Hanzi Writer)
+      js/strokes.js  ordre des traits (Hanzi Writer) : animation et tracé
+      js/answers.js  vérification souple d'un sens tapé
       js/ui.js       notifications, pagination
-      js/views/      écrans (exercices, éditeur, révision, suivi, vocabulaire, fiche d'un mot,
+      js/views/      écrans (exercices, éditeur, révision, test, suivi, vocabulaire, fiche d'un mot,
                      connexion, compte, administration)
 ```

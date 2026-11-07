@@ -13,7 +13,7 @@ export async function exercisesView(el) {
       <div>
         <h2>Exercices</h2>
         <p class="muted small">${!assigned.length ? ""
-          : todoTotal ? `${todoTotal} carte(s) à réviser aujourd'hui`
+          : todoTotal ? `${todoTotal} carte(s) à tester aujourd'hui`
           : "Tout est à jour pour aujourd'hui 🎉"}</p>
       </div>
       ${can("manage_courses") ? '<a class="button" href="#/exercices/nouveau">+ Nouvel exercice</a>' : ""}
@@ -76,10 +76,12 @@ function card(ex) {
         <span class="new">${new_today} nouvelles</span>
       </p>
       <div class="actions">
-        ${!ex.assigned ? ""
-          : todo > 0
-          ? `<a class="button" href="#/exercices/${ex.id}/reviser">Réviser (${todo})</a>`
-          : '<span class="muted">Rien à réviser aujourd\'hui ✓</span>'}
+        ${!ex.assigned || !total ? "" : `
+          <a class="button secondary" href="#/exercices/${ex.id}/reviser"
+            title="Les mots défilent avec leur sens, leur prononciation et leur classificateur">Réviser</a>
+          ${todo > 0
+            ? `<a class="button" href="#/exercices/${ex.id}/test" title="Réponse attendue, notée">Test (${todo})</a>`
+            : '<span class="muted small">Test à jour ✓</span>'}`}
         ${ex.can_edit ? `
           <a class="button secondary" href="#/exercices/${ex.id}/modifier">Modifier</a>
           <a class="button secondary" href="#/exercices/${ex.id}/suivi" title="Progression des élèves">Suivi</a>` : ""}

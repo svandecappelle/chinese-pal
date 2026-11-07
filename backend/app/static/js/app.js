@@ -7,6 +7,7 @@ import { editorView } from "./views/editor.js";
 import { loginView } from "./views/login.js";
 import { playView } from "./views/play.js";
 import { progressView } from "./views/progress.js";
+import { studyView } from "./views/study.js";
 import { vocabView } from "./views/vocab.js";
 
 // [chemin, vue, onglet actif, accès]. Accès : null (libre), "user" (connecté) ou un droit.
@@ -19,7 +20,9 @@ const routes = [
   [/^\/exercices\/nouveau$/, editorView, "exercises", "manage_courses"],
   [/^\/exercices\/(?<id>\d+)\/modifier$/, editorView, "exercises", "manage_courses"],
   [/^\/exercices\/(?<id>\d+)\/suivi$/, progressView, "exercises", "manage_courses"],
-  [/^\/exercices\/(?<id>\d+)\/reviser$/, playView, "exercises", null],
+  // Deux façons de lancer un exercice : révision (tout est montré) et test (réponse attendue).
+  [/^\/exercices\/(?<id>\d+)\/reviser$/, studyView, "exercises", null],
+  [/^\/exercices\/(?<id>\d+)\/test$/, playView, "exercises", null],
   [/^\/vocabulaire$/, vocabView, "vocab", null],
 ];
 

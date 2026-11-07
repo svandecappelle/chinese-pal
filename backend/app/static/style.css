@@ -421,3 +421,11 @@ td.due { color: var(--hard); font-weight: 600; }
   background: color-mix(in srgb, var(--easy) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--easy) 35%, transparent);
 }
+
+/* Révision et test */
+.study-settings { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.study-settings select { padding: .3rem .4rem; font-size: .9rem; }
+.small-button.active { background: var(--surface-2); font-weight: 600; }
+.study-card .measure { justify-content: center; margin-top: .75rem; }
+.write { margin-top: 1.25rem; }
+.write .stroke-box { touch-action: none; }

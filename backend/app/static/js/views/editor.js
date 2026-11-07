@@ -1,4 +1,4 @@
-import { api, escape, MODES } from "../api.js";
+import { ANSWER_HINTS, api, escape, MODES } from "../api.js";
 import { attachKeyboard } from "../keyboard.js";
 import { displayName } from "../session.js";
 import { bindPager, paginate, pagerHtml, toast } from "../ui.js";
@@ -44,15 +44,15 @@ export async function editorView(el, { id }) {
 
       <fieldset>
         <legend>Modes de révision</legend>
+        <p class="muted small">Les modes décident des questions du <strong>test</strong> (réponse attendue, notée).
+          La <strong>révision</strong> montre simplement chaque mot avec son sens, sa prononciation et son classificateur.</p>
         <div class="mode-grid">
-          ${Object.entries(MODES).map(([value, { label, typed, audio, choice }]) => `
+          ${Object.entries(MODES).map(([value, { label, answer, audio }]) => `
             <label class="mode-option">
               <input type="checkbox" name="mode" value="${value}"
                 ${exercise.modes.includes(value) ? "checked" : ""}>
               <span>${label}</span>
-              <small class="muted">${typed ? "réponse tapée, vérifiée"
-                : choice ? "choix parmi 4, vérifié · noms seulement"
-                : audio ? "audio, auto-évalué" : "auto-évalué"}</small>
+              <small class="muted">${audio ? "audio · " : ""}${ANSWER_HINTS[answer]}</small>
             </label>`).join("")}
         </div>
       </fieldset>

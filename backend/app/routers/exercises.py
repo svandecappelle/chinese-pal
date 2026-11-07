@@ -291,6 +291,40 @@ def get_session(exercise_id: int, user: dict | None = Depends(auth.visitor)):
     return {"exercise": exercise, "stats": stats, "cards": payloads}
 
 
+@router.get("/{exercise_id}/words")
+def get_words(exercise_id: int, user: dict | None = Depends(auth.visitor)):
+    """Mots de l'exercice pour le mode révision : tout est montré, rien n'est noté."""
+    with pool.connection() as conn:
+        exercise = get_exercise_or_404(conn, exercise_id, user)
+        words = conn.execute(
+            CARDS_CTE + """SELECT DISTINCT ON (word_id) word_id, hanzi, pinyin, translation, classifiers
+                           FROM cards ORDER BY word_id""",
+            {"exercise_id": exercise_id, "user_id": None},
+        ).fetchall()
+        examples = {
+            e["word_id"]: e for e in conn.execute(
+                """SELECT DISTINCT ON (word_id) word_id, hanzi, pinyin, translation
+                   FROM examples WHERE word_id = ANY(%s) ORDER BY word_id, id""",
+                ([w["word_id"] for w in words],),
+            )
+        }
+    return {
+        "exercise": exercise,
+        "words": [
+            {
+                "word_id": w["word_id"],
+                "hanzi": w["hanzi"],
+                "pinyin": w["pinyin"],
+                "translation": w["translation"],
+                "classifiers": [classifiers.described(c) for c in w["classifiers"]],
+                "measure": classifiers.measure(w["hanzi"], w["pinyin"], w["classifiers"]),
+                "example": examples.get(w["word_id"]),
+            }
+            for w in words
+        ],
+    }
+
+
 @router.get("/{exercise_id}/progress")
 def get_progress(exercise_id: int, user: dict = Depends(auth.current_user)):
     """Suivi du cours pour son auteur : la progression de chaque élève à qui il est attribué."""

@@ -2,7 +2,7 @@
 
 const HANZI = /[一-鿿]/;
 
-function writerOptions(size) {
+function writerOptions(size, outline) {
   const css = getComputedStyle(document.documentElement);
   return {
     width: size,
@@ -14,7 +14,9 @@ function writerOptions(size) {
     drawingColor: css.getPropertyValue("--accent").trim() || "#c0392b",
     highlightColor: css.getPropertyValue("--easy").trim() || "#2e86c1",
     showCharacter: false,
-    showOutline: true,
+    showOutline: outline,
+    // En test, l'indice (trait à tracer) n'apparaît qu'après 3 essais ratés sur un trait.
+    showHintAfterMisses: 3,
     strokeAnimationSpeed: 1.2,
     delayBetweenStrokes: 150,
     onLoadCharDataError: () => {},
@@ -23,19 +25,20 @@ function writerOptions(size) {
 
 /**
  * Affiche une case par caractère de `text` dans `container` et renvoie des commandes
- * { animate(), quiz(onDone) } qui enchaînent les caractères un par un.
+ * { available, animate(), quiz(onDone), cancel(), reveal() } qui enchaînent les caractères
+ * un par un. `outline: false` cache le modèle grisé (pour tracer de mémoire).
  */
-export function mountStrokes(container, text, size = 110) {
+export function mountStrokes(container, text, size = 110, { outline = true } = {}) {
   container.innerHTML = "";
   if (!window.HanziWriter) {
     container.innerHTML = '<p class="muted">Ordre des traits indisponible (pas de connexion ?).</p>';
-    return { animate() {}, quiz() {} };
+    return { available: false, animate() {}, quiz() {}, cancel() {}, reveal() {} };
   }
   const writers = [...text].filter((c) => HANZI.test(c)).map((char) => {
     const box = document.createElement("div");
     box.className = "stroke-box";
     container.append(box);
-    return HanziWriter.create(box, char, writerOptions(size));
+    return HanziWriter.create(box, char, writerOptions(size, outline));
   });
 
   // Exécute `step(writer, next)` pour chaque caractère, l'un après l'autre.
@@ -45,6 +48,7 @@ export function mountStrokes(container, text, size = 110) {
   };
 
   return {
+    available: true,
     animate() {
       writers.forEach((w) => w.hideCharacter());
       chain((w, next) => w.animateCharacter({ onComplete: next }));
@@ -61,6 +65,17 @@ export function mountStrokes(container, text, size = 110) {
         }),
         () => onDone?.(mistakes),
       );
+    },
+    cancel() {
+      writers.forEach((w) => w.cancelQuiz());
+    },
+    // Montre les caractères entiers (après un abandon, par exemple).
+    reveal() {
+      writers.forEach((w) => {
+        w.cancelQuiz();
+        w.showOutline();
+        w.showCharacter();
+      });
     },
   };
 }
