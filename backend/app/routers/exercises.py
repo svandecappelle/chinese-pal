@@ -4,16 +4,17 @@ from fastapi import APIRouter, HTTPException
 from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from pydantic import BaseModel, Field
 
+from .. import classifiers
 from ..db import pool
 from ..srs import CardState, previews
 
 router = APIRouter(prefix="/api/exercises", tags=["exercices"])
 
 # Modes de révision, dans l'ordre où les nouvelles cartes sont présentées
-# (reconnaître avant de produire).
+# (reconnaître avant de produire). « classifier » ne concerne que les mots qui en ont un.
 Mode = Literal[
     "hanzi_to_meaning", "pinyin_to_meaning", "audio_to_meaning", "meaning_to_hanzi",
-    "hanzi_to_pinyin", "meaning_to_pinyin",
+    "hanzi_to_pinyin", "meaning_to_pinyin", "classifier",
 ]
 MODES = get_args(Mode)
 
@@ -34,12 +35,13 @@ ex_modes AS (
 ),
 cards AS (
     SELECT w.id AS word_id, m.mode, m.position AS mode_position,
-           w.hanzi, w.pinyin, w.translation,
+           w.hanzi, w.pinyin, w.translation, w.classifiers,
            rs.ease, rs.interval_days, rs.repetitions, rs.lapses, rs.due_at, rs.first_reviewed_at
     FROM ex_words ew
     JOIN words w ON w.id = ew.id
     CROSS JOIN ex_modes m
     LEFT JOIN review_states rs ON rs.word_id = w.id AND rs.mode = m.mode
+    WHERE m.mode <> 'classifier' OR cardinality(w.classifiers) > 0
 )
 """
 
@@ -67,15 +69,21 @@ class ExerciseIn(BaseModel):
 
 
 def card_payload(row: dict) -> dict:
-    return {
+    word_classifiers = row["classifiers"]
+    payload = {
         "word_id": row["word_id"],
         "mode": row["mode"],
         "hanzi": row["hanzi"],
         "pinyin": row["pinyin"],
         "translation": row["translation"],
+        "classifiers": [classifiers.described(c) for c in word_classifiers],
+        "measure": classifiers.measure(row["hanzi"], row["pinyin"], word_classifiers),
         "is_new": row.get("due_at") is None,
         "previews": previews(CardState.from_row(row)),
     }
+    if row["mode"] == "classifier":
+        payload["choices"] = classifiers.choices(word_classifiers)
+    return payload
 
 
 def exercise_stats(conn, exercise: dict) -> dict:

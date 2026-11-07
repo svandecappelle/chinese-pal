@@ -57,6 +57,7 @@ export async function vocabView(el) {
           <th><button type="button" class="sort" data-sort="hanzi">Hanzi</button></th>
           <th><button type="button" class="sort" data-sort="pinyin">Pinyin</button></th>
           <th><button type="button" class="sort" data-sort="translation">Traduction</button></th>
+          <th class="hide-narrow" title="Classificateurs">量词</th>
           <th class="hide-narrow">Listes</th>
           <th class="actions-col"><button type="button" class="sort" data-sort="id" title="Ordre d'ajout">#</button></th>
         </tr></thead>
@@ -95,9 +96,10 @@ export async function vocabView(el) {
         <td class="hanzi">${escape(w.hanzi)} ${speakButton(w.hanzi, { pinyin: w.pinyin })}</td>
         <td>${escape(w.pinyin)}</td>
         <td>${escape(w.translation)}</td>
+        <td class="hide-narrow hanzi-sm">${w.classifiers.map(escape).join(" ")}</td>
         <td class="hide-narrow">${w.deck_ids.map((id) => `<span class="tag">${escape(deckName[id])}</span>`).join(" ")}</td>
         <td class="actions-col"><button type="button" class="link" data-delete="${w.id}" title="Supprimer" aria-label="Supprimer ${escape(w.hanzi)}">✕</button></td>
-      </tr>`).join("") || `<tr><td colspan="5" class="muted center">${
+      </tr>`).join("") || `<tr><td colspan="6" class="muted center">${
         words.length ? "Aucun mot ne correspond à la recherche." : "Aucun mot : importe une liste ou ajoute un mot."
       }</td></tr>`;
     el.querySelector("#pager").innerHTML = pagerHtml(page, state, "mot(s)");

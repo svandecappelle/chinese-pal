@@ -23,6 +23,7 @@ def submit_review(review: ReviewIn):
     with pool.connection() as conn:
         row = conn.execute(
             """SELECT w.id AS word_id, %(mode)s::text AS mode, w.hanzi, w.pinyin, w.translation,
+                      w.classifiers,
                       rs.ease, rs.interval_days, rs.repetitions, rs.lapses
                FROM words w
                LEFT JOIN review_states rs ON rs.word_id = w.id AND rs.mode = %(mode)s

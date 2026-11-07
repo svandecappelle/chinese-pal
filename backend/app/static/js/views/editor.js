@@ -37,12 +37,14 @@ export async function editorView(el, { id }) {
       <fieldset>
         <legend>Modes de révision</legend>
         <div class="mode-grid">
-          ${Object.entries(MODES).map(([value, { label, typed, audio }]) => `
+          ${Object.entries(MODES).map(([value, { label, typed, audio, choice }]) => `
             <label class="mode-option">
               <input type="checkbox" name="mode" value="${value}"
                 ${exercise.modes.includes(value) ? "checked" : ""}>
               <span>${label}</span>
-              <small class="muted">${typed ? "réponse tapée, vérifiée" : audio ? "audio, auto-évalué" : "auto-évalué"}</small>
+              <small class="muted">${typed ? "réponse tapée, vérifiée"
+                : choice ? "choix parmi 4, vérifié · noms seulement"
+                : audio ? "audio, auto-évalué" : "auto-évalué"}</small>
             </label>`).join("")}
         </div>
       </fieldset>

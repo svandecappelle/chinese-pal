@@ -25,4 +25,5 @@ export const MODES = {
   meaning_to_hanzi: { label: "Sens → 汉字", typed: false },
   hanzi_to_pinyin: { label: "汉字 → pinyin (saisie)", typed: true },
   meaning_to_pinyin: { label: "Sens → pinyin (saisie)", typed: true },
+  classifier: { label: "Nom → classificateur", typed: false, choice: true },
 };

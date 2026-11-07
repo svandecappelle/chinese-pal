@@ -3,6 +3,7 @@ import { bindSpeakButtons, speakButton, stopSpeaking } from "../audio.js";
 import { attachKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
 import { mountStrokes } from "../strokes.js";
+import { toast } from "../ui.js";
 
 // Fiche d'un mot dans une boîte de dialogue : prononciation, ordre des traits, exemples.
 // `onChange` est appelé après l'ajout ou la suppression d'un exemple.
@@ -23,6 +24,14 @@ export async function openWordDialog(wordId, deckNames, onChange) {
     <p class="tags center">
       ${word.deck_ids.map((id) => `<span class="tag">${escape(deckNames[id] ?? "")}</span>`).join("")}
     </p>
+
+    <h3>Classificateur <small class="muted">量词</small></h3>
+    <div id="measure" class="measure"></div>
+    <form id="classifier-form" class="row">
+      <input name="classifiers" value="${escape(word.classifiers.join(" "))}"
+        placeholder="ex. 本 (plusieurs : séparés par des espaces)" aria-label="Classificateurs">
+      <button type="submit" class="secondary">Enregistrer</button>
+    </form>
 
     <h3>Ordre des traits</h3>
     <div id="dialog-strokes" class="strokes"></div>
@@ -75,6 +84,34 @@ export async function openWordDialog(wordId, deckNames, onChange) {
     word.examples = word.examples.filter((x) => x.id !== Number(id));
     renderExamples();
     onChange?.();
+  });
+
+  function renderMeasure(measure) {
+    dialog.querySelector("#measure").innerHTML = measure
+      ? `<span class="hanzi-sm">${escape(measure.hanzi)}</span> ${speakButton(measure.hanzi)}
+         <span class="muted">${escape(measure.pinyin)}</span>`
+      : '<span class="muted">Aucun classificateur (verbe, adjectif… ou pas encore renseigné).</span>';
+  }
+  renderMeasure(word.measure);
+
+  const classifierForm = dialog.querySelector("#classifier-form");
+  attachKeyboard(classifierForm.elements.classifiers, "hanzi");
+  classifierForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const classifiers = classifierForm.elements.classifiers.value.split(/[\s,，、]+/).filter(Boolean);
+    if (!classifiers.every((c) => /^[㐀-鿿]{1,2}$/.test(c))) {
+      toast("Un classificateur s'écrit avec un ou deux caractères chinois (ex. 本).", "error");
+      return;
+    }
+    try {
+      const updated = await api(`/words/${wordId}/classifiers`, { method: "PUT", body: { classifiers } });
+      classifierForm.elements.classifiers.value = updated.classifiers.join(" ");
+      renderMeasure(updated.measure);
+      toast("Classificateurs enregistrés", "success");
+      onChange?.();
+    } catch (err) {
+      toast(err.message, "error");
+    }
   });
 
   const exampleForm = dialog.querySelector("#example-form");

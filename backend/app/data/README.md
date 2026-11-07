@@ -26,3 +26,9 @@ Pour les caractères à plusieurs lectures, la lecture retenue est celle du HSK 
 
 Une phrase par mot (colonnes `hanzi` du mot, `phrase`, `pinyin`, `traduction`), rédigées pour ce
 projet. Le pinyin suit les tons de citation (不 bù, 一 yī), sans les modifications de ton à l'oral.
+
+## Classificateurs (`classificateurs.tsv`)
+
+Classificateurs des noms des listes HSK (colonnes `hanzi`, `pinyin`, `classificateurs` séparés par
+des espaces, le plus courant d'abord), tirés de [CC-CEDICT](https://cc-cedict.org) (CC BY-SA 4.0)
+puis relus pour ce projet : sens HSK du mot, usage courant d'abord.

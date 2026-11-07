@@ -47,6 +47,8 @@ docker compose exec db psql -U chinese
 
 - Une **carte** = un mot + un mode de révision :
   - auto-évalués : 汉字 → sens, pinyin → 汉字 + sens, écoute → 汉字 + sens, sens → 汉字 ;
+  - classificateur : on voit un nom (一 ？ 书) et on choisit le bon classificateur parmi quatre ;
+    seuls les mots qui en ont un forment des cartes ;
   - saisie vérifiée automatiquement : 汉字 → pinyin, sens → pinyin. Le pinyin se tape avec des
     chiffres (`ni3 hao3` → `nǐ hǎo`, `lv4` → `lǜ`, ton neutre sans chiffre) ou directement avec
     accents ; une réponse aux bonnes syllabes mais aux tons faux est signalée comme telle
@@ -75,6 +77,15 @@ docker compose exec db psql -U chinese
   ([strokes.js](backend/app/static/js/strokes.js)). Nécessite une connexion Internet.
 - **Exemples** : une phrase par mot HSK (avec pinyin et traduction), affichée avec la réponse.
   On peut en ajouter ou en supprimer depuis la fiche d'un mot (clic sur une ligne du vocabulaire).
+
+## Classificateurs
+
+Chaque nom peut avoir ses classificateurs (量词 : 一**本**书, 一**只**猫), affichés avec la réponse en
+révision, dans la fiche du mot (où on les modifie) et dans le tableau du vocabulaire, sous la forme
+« 一本书 *yì běn shū* » (ton de 一 adapté au classificateur). Ceux des 146 noms HSK concernés ont
+été relus à la main ([classificateurs.tsv](backend/app/data/classificateurs.tsv)) et s'ajoutent à
+l'import des listes (« Compléter » pour une liste déjà importée) ; un mot ajouté à la main reçoit
+ceux qu'indique CC-CEDICT ([classifiers.py](backend/app/classifiers.py)).
 
 ## Claviers chinois
 
@@ -122,6 +133,7 @@ backend/
     srs.py           algorithme de répétition espacée
     tts.py           synthèse vocale (prononciation)
     ime.py           caractères candidats pour un pinyin (clavier 汉)
+    classifiers.py   classificateurs : pinyin, « 一本书 », choix du mode de révision
     db.py            pool de connexions, migrations
     config.py        configuration (variables d'environnement)
     routers/         routes API (vocabulaire, exercices, révisions, prononciation, saisie)

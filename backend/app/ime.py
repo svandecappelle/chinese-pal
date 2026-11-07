@@ -17,6 +17,7 @@ from .config import settings
 
 log = logging.getLogger(__name__)
 
+CLASSIFIER = re.compile(r"(?:[^|\[,]+\|)?([^|\[,]+)\[[^\]]+\]")
 CEDICT_LINE = re.compile(r"^\S+ (\S+) \[([^\]]+)\] /(.*)/$")
 HANZI = re.compile(r"^[㐀-鿿]+$")
 SYLLABLE = re.compile(r"^[a-z]+[1-5]$")
@@ -43,6 +44,7 @@ class Dictionary:
         self.lexicon = lexicon
         self.by_key: dict[str, list[Entry]] | None = None
         self.keys: list[str] = []
+        self.classifiers: dict[str, list[str]] = {}
         self.lock = threading.Lock()
 
     def load(self) -> None:
@@ -76,6 +78,9 @@ class Dictionary:
                 if not match:
                     continue
                 hanzi, raw_pinyin, definitions = match.groups()
+                for group in re.findall(r"CL:([^/]+)", definitions):
+                    found = self.classifiers.setdefault(hanzi, [])
+                    found += [c for c in CLASSIFIER.findall(group) if c not in found]
                 syllables = raw_pinyin.lower().replace("u:", "v").split()
                 if (
                     not HANZI.match(hanzi)
@@ -103,6 +108,17 @@ class Dictionary:
         self.keys = sorted(by_key)
         self.by_key = by_key
         log.info("Dictionnaire de saisie chargé : %d entrées", len(entries))
+
+    def reading_of(self, hanzi: str) -> str | None:
+        """Lecture la plus fréquente d'un mot, chiffres de ton (« ben3 »), ou None."""
+        self.load()
+        entries = [e for key in self.by_key.values() for e in key if e.hanzi == hanzi]
+        return max(entries, key=lambda e: e.frequency).pinyin if entries else None
+
+    def classifiers_of(self, hanzi: str) -> list[str]:
+        """Classificateurs indiqués par CC-CEDICT pour un mot (les deux premiers)."""
+        self.load()
+        return self.classifiers.get(hanzi, [])[:2]
 
     def candidates(self, typed: str, preferred: set[tuple[str, str]], limit: int) -> list[dict]:
         """

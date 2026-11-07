@@ -27,6 +27,9 @@ const PROMPTS = {
   meaning_to_hanzi: ["Comment l'écrit-on en chinois ?", (c) => bigMeaning(c)],
   hanzi_to_pinyin: ["Tape le pinyin avec les tons", (c) => bigHanzi(c)],
   meaning_to_pinyin: ["Tape le pinyin avec les tons", (c) => bigMeaning(c)],
+  classifier: ["Quel classificateur ?", (c) => `
+    <div class="big-hanzi">一<span class="blank">？</span>${escape(c.hanzi)}</div>
+    <div class="muted">${escape(c.pinyin)} · ${escape(c.translation)}</div>`],
 };
 
 const bigHanzi = (c) => `<div class="big-hanzi">${escape(c.hanzi)}</div>`;
@@ -75,7 +78,7 @@ export async function playView(el, { id }) {
     card = queue[0];
     if (!card) return renderEnd();
     revealed = false;
-    const { typed, audio } = MODES[card.mode];
+    const { typed, audio, choice } = MODES[card.mode];
     const [question, prompt] = PROMPTS[card.mode];
     const newLeft = queue.filter((c) => c.is_new).length;
     const example = card.example;
@@ -106,6 +109,14 @@ export async function playView(el, { id }) {
             <div id="typed-preview" class="typed-preview"></div>
             <small class="muted">Chiffre après chaque syllabe pour le ton (5 ou rien = neutre), v = ü</small>
           </form>` : ""}
+        ${choice ? `
+          <div class="choices">
+            ${card.choices.map((c, i) => `
+              <button type="button" class="secondary choice" data-choice="${escape(c.hanzi)}">
+                <span class="hanzi-sm">${escape(c.hanzi)}</span>
+                <small>${escape(c.pinyin)} <kbd>${i + 1}</kbd></small>
+              </button>`).join("")}
+          </div>` : ""}
         <div id="answer" hidden>
           <p id="verdict" class="verdict"></p>
           <hr>
@@ -118,6 +129,14 @@ export async function playView(el, { id }) {
           <div id="strokes" class="strokes"></div>
           <div class="pinyin">${escape(card.pinyin)}</div>
           <div class="meaning">${escape(card.translation)}</div>
+          ${card.measure ? `
+            <div class="measure">
+              <span class="hanzi-sm">${escape(card.measure.hanzi)}</span>
+              ${speakButton(card.measure.hanzi)}
+              <span class="muted">${escape(card.measure.pinyin)}</span>
+              ${card.classifiers.length > 1 ? `<span class="muted small">· aussi
+                ${card.classifiers.slice(1).map((c) => escape(c.hanzi)).join("、")}</span>` : ""}
+            </div>` : ""}
           ${example ? `
             <div class="example">
               <div>${escape(example.hanzi)} ${speakButton(example.hanzi, { label: "Écouter la phrase" })}</div>
@@ -127,14 +146,19 @@ export async function playView(el, { id }) {
         </div>
       </div>
       <div id="controls" class="controls">
-        <button id="reveal">${typed ? "Vérifier <kbd>Entrée</kbd>" : "Afficher la réponse <kbd>Espace</kbd>"}</button>
+        ${choice
+          ? '<p class="muted">Choisis le classificateur : clic ou <kbd>1</kbd>–<kbd>4</kbd></p>'
+          : `<button id="reveal">${typed ? "Vérifier <kbd>Entrée</kbd>" : "Afficher la réponse <kbd>Espace</kbd>"}</button>`}
       </div>
       <p class="muted center small">
         Raccourcis : <kbd>Espace</kbd> réponse · <kbd>1</kbd>–<kbd>4</kbd> note ·
         <kbd>A</kbd> écouter · <kbd>T</kbd> traits · <a href="#/">Quitter</a>
       </p>`;
 
-    el.querySelector("#reveal").addEventListener("click", reveal);
+    el.querySelector("#reveal")?.addEventListener("click", () => reveal());
+    el.querySelectorAll("[data-choice]").forEach((b) =>
+      b.addEventListener("click", () => reveal(b.dataset.choice))
+    );
     el.querySelector("#strokes-button").addEventListener("click", showStrokes);
     el.querySelector("#autoplay").addEventListener("change", (e) => {
       autoplay = e.target.checked;
@@ -159,10 +183,31 @@ export async function playView(el, { id }) {
     mountStrokes(container, card.hanzi, 90).animate();
   }
 
-  function reveal() {
+  // Ce que l'on prononce : « 一本书 » pour le mode classificateur, le mot sinon.
+  const spokenText = () => (MODES[card.mode].choice && card.measure ? card.measure.hanzi : card.hanzi);
+  const spokenPinyin = () => (MODES[card.mode].choice ? undefined : card.pinyin);
+
+  /** Affiche la réponse ; `chosen` : classificateur choisi (mode classificateur). */
+  function reveal(chosen) {
     if (revealed) return;
+    if (MODES[card.mode].choice && chosen === undefined) return;
     revealed = true;
     suggested = 3;
+
+    if (chosen !== undefined) {
+      const valid = card.classifiers.map((c) => c.hanzi);
+      const correct = valid.includes(chosen);
+      el.querySelectorAll("[data-choice]").forEach((b) => {
+        b.disabled = true;
+        if (valid.includes(b.dataset.choice)) b.classList.add("ok");
+        else if (b.dataset.choice === chosen) b.classList.add("ko");
+      });
+      el.querySelector(".blank").textContent = card.classifiers[0].hanzi;
+      const verdict = el.querySelector("#verdict");
+      verdict.className = `verdict ${correct ? "ok" : "ko"}`;
+      verdict.textContent = correct ? "✓ Correct" : `✗ C'est ${card.classifiers[0].hanzi}`;
+      suggested = correct ? 3 : 1;
+    }
 
     const input = el.querySelector("#typed-input");
     if (input) {
@@ -179,7 +224,7 @@ export async function playView(el, { id }) {
     }
 
     el.querySelector("#answer").hidden = false;
-    if (autoplay && !MODES[card.mode].audio) speak(card.hanzi, card.pinyin);
+    if (autoplay && !MODES[card.mode].audio) speak(spokenText(), spokenPinyin());
     el.querySelector("#controls").innerHTML = GRADES.map((g) => `
       <button class="grade ${g.cls} ${g.grade === suggested ? "suggested" : ""}" data-grade="${g.grade}">
         <span>${g.label}</span>
@@ -232,9 +277,12 @@ export async function playView(el, { id }) {
     const key = e.key.toLowerCase();
     if (!card) return;
     if (key === "a" && (revealed || MODES[card.mode].audio)) {
-      speak(card.hanzi, card.pinyin);
+      speak(spokenText(), spokenPinyin());
     } else if (key === "t" && revealed) {
       showStrokes();
+    } else if (!revealed && MODES[card.mode].choice) {
+      const button = el.querySelectorAll("[data-choice]")[Number(e.key) - 1];
+      if (button) reveal(button.dataset.choice);
     } else if (!revealed && (e.key === " " || e.key === "Enter")) {
       e.preventDefault();
       reveal();

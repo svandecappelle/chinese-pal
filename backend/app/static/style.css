@@ -356,3 +356,15 @@ body.kb-open { padding-bottom: var(--kb-height, 240px); }
 .kb-candidate small { font-size: .7rem; color: var(--muted); }
 .kb-nav { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
 .kb-nav button { padding: .2rem .7rem; }
+
+/* Classificateurs */
+.measure { display: flex; align-items: center; justify-content: center; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
+.word-dialog .measure { justify-content: flex-start; margin-bottom: .5rem; }
+.blank { color: var(--accent); padding: 0 .1em; }
+.choices { display: flex; justify-content: center; gap: .6rem; flex-wrap: wrap; margin-top: 1.25rem; }
+.choice { flex-direction: column; gap: .1rem; min-width: 4.5rem; padding: .5rem .9rem; }
+.choice .hanzi-sm { font-size: 1.8rem; }
+.choice small { color: var(--muted); }
+.choice.ok, .choice.ok:disabled { opacity: 1; background: var(--good); border-color: var(--good); color: #fff; }
+.choice.ok small, .choice.ko small { color: inherit; }
+.choice.ko, .choice.ko:disabled { opacity: 1; background: var(--again); border-color: var(--again); color: #fff; }
