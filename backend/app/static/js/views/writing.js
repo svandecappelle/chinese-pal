@@ -1,4 +1,6 @@
 import { api, escape } from "../api.js";
+import { attachKeyboard, close as closeKeyboard } from "../keyboard.js";
+import { numbersToMarks } from "../pinyin.js";
 
 // Fiches d'entraînement à l'écriture, à imprimer : pour chaque caractère, l'ordre des traits
 // pas à pas, un modèle, des modèles grisés à repasser, puis des cases vides (田字格 ou 米字格).
@@ -35,6 +37,19 @@ function writeSettings(settings) {
 // Tracés des traits (données Hanzi Writer), gardés pour ne pas les recharger à chaque réglage.
 // null : caractère inconnu ou pas de connexion, on l'écrit alors avec la police.
 const charData = new Map();
+// Pinyin (d'après le dictionnaire) des mots tapés qui ne sont pas dans le vocabulaire.
+const readings = new Map();
+
+async function loadReadings(words) {
+  const missing = [...new Set(words.filter((w) => !w.pinyin && !readings.has(w.hanzi)).map((w) => w.hanzi))];
+  if (!missing.length) return;
+  try {
+    const found = await api(`/ime/lectures?q=${encodeURIComponent(missing.join(" "))}`);
+    missing.forEach((hanzi) => readings.set(hanzi, found[hanzi] ? numbersToMarks(found[hanzi]) : ""));
+  } catch {
+    // Dictionnaire indisponible : les mots tapés restent sans pinyin.
+  }
+}
 
 function loadChar(char) {
   if (!charData.has(char)) {
@@ -154,7 +169,7 @@ export async function writingView(el, { id, deck }) {
           <select id="size">${Object.entries(SIZES).map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select>
         </label>
       </div>
-      <label id="text-field">Caractères ou mots, séparés par des espaces
+      <label id="text-field"><span id="text-label"></span>
         <textarea id="text" rows="2" lang="zh" placeholder="你好 谢谢 学习 中国"></textarea>
       </label>
       <div id="pick-field" hidden>
@@ -188,10 +203,14 @@ export async function writingView(el, { id, deck }) {
   for (const key of ["source", "grid", "size", "traces", "rows"]) $(`#${key}`).value = String(settings[key]);
   for (const key of ["strokes", "pinyin", "meaning", "unique"]) $(`#${key}`).checked = settings[key];
   $("#text").value = settings.text;
+  // Clavier chinois (汉) : on tape le pinyin et on choisit les caractères.
+  attachKeyboard($("#text"), "hanzi");
 
   async function loadSource() {
     const source = settings.source;
-    $("#text-field").hidden = source !== "text";
+    $("#text-label").textContent = source === "text"
+      ? "Caractères ou mots, séparés par des espaces"
+      : "Caractères en plus, ajoutés après les mots cochés (facultatif)";
     $("#pick-field").hidden = source === "text";
     if (source === "text") {
       title = "";
@@ -227,20 +246,22 @@ export async function writingView(el, { id, deck }) {
   }
 
   function selectedWords() {
-    return settings.source === "text"
-      ? wordsFromText(settings.text, known)
-      : words.filter((_, i) => picked.has(i));
+    const typed = wordsFromText(settings.text, known)
+      .map((w) => (w.pinyin ? w : { ...w, pinyin: readings.get(w.hanzi) ?? "" }));
+    return settings.source === "text" ? typed : [...words.filter((_, i) => picked.has(i)), ...typed];
   }
 
   async function render() {
     const id = ++renderId;
+    await loadReadings(wordsFromText(settings.text, known));
+    if (id !== renderId) return;
     const list = selectedWords();
     const chars = [...new Set(list.flatMap((w) => [...w.hanzi].filter((c) => HANZI.test(c))))];
     const sheet = $("#sheet");
     if (!chars.length) {
       sheet.innerHTML = `<p class="sheet-empty">${settings.source === "text"
         ? "Tape des caractères ci-dessus pour préparer la fiche."
-        : "Coche au moins un mot."}</p>`;
+        : "Coche au moins un mot ou tape des caractères."}</p>`;
       $("#sheet-status").textContent = "";
       return;
     }
@@ -330,5 +351,6 @@ export async function writingView(el, { id, deck }) {
   return () => {
     renderId += 1;
     clearTimeout(typing);
+    closeKeyboard();
   };
 }
