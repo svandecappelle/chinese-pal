@@ -302,6 +302,7 @@ label.small { font-size: .9rem; }
 .status { font-size: .85rem; color: var(--muted); white-space: nowrap; }
 .status.ok { color: var(--good); }
 .status.ko { color: var(--accent); }
+.status.offline { color: var(--hard, #d68910); }
 .error { color: var(--accent); min-height: 1em; }
 [hidden] { display: none !important; }
 
@@ -320,6 +321,8 @@ label.small { font-size: .9rem; }
 @media (max-width: 600px) {
   header { padding: .5rem 1rem; gap: .75rem; flex-wrap: wrap; }
   header .status { display: none; }
+  /* Sur téléphone, l'indicateur n'apparaît que hors ligne ou serveur injoignable. */
+  header .status.offline, header .status.ko { display: inline; order: 2; font-size: .75rem; }
   header .account { margin-left: auto; }
   header nav { order: 3; flex-basis: 100%; overflow-x: auto; }
   .hide-narrow { display: none; }

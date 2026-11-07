@@ -246,6 +246,7 @@ export async function playView(el, { id }) {
   let busy = false;
   let writer = null;
   let autoplay = readAutoplay();
+  let offlineNoticed = false;
   // Réponses en cours : tons choisis (et syllabe active), mots placés de la phrase.
   let tones = [];
   let toneSlot = 0;
@@ -701,8 +702,13 @@ export async function playView(el, { id }) {
         method: "POST",
         body: { word_id: card.word_id, mode: card.mode, grade },
       });
-      // Sans compte, la première réponse a créé la progression d'invité (cookie).
-      if (!session.user) session.guest = true;
+      if (updated.offline) {
+        if (!offlineNoticed) toast("Hors ligne : tes réponses sont gardées et seront envoyées au retour du réseau.");
+        offlineNoticed = true;
+      } else if (!session.user) {
+        // Sans compte, la première réponse a créé la progression d'invité (cookie).
+        session.guest = true;
+      }
       results[grade] += 1;
       queue.shift();
       // La carte reprogrammée garde son exemple (non renvoyé par l'API de révision).

@@ -1,9 +1,21 @@
+import { isNetworkError, queueReview } from "./offline.js";
+
 export async function api(path, options = {}) {
-  const res = await fetch(`/api${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
+  let res;
+  try {
+    res = await fetch(`/api${path}`, {
+      headers: { "Content-Type": "application/json" },
+      ...options,
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    });
+  } catch (err) {
+    // Hors ligne, une réponse de test attend dans le navigateur (envoyée au retour du réseau).
+    if (path === "/reviews" && options.method === "POST" && isNetworkError(err)) {
+      queueReview(options.body);
+      return { offline: true };
+    }
+    throw isNetworkError(err) ? new Error("Hors ligne : connexion au serveur impossible") : err;
+  }
   if (!res.ok) {
     // Session expirée ou fermée ailleurs : l'application renvoie vers la connexion.
     if (res.status === 401 && path !== "/account/login") {

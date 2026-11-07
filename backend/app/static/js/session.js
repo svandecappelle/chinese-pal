@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { clearApiCache } from "./offline.js";
 
 // Utilisateur connecté, partagé par toutes les vues. `user` vaut null sans connexion.
 // `guest` : sans compte, mais une progression d'invité existe dans ce navigateur.
@@ -14,6 +15,8 @@ export async function loadSession() {
 
 export function setUser(user) {
   session.user = user;
+  // Réponses de l'API gardées pour le hors ligne : celles de l'ancien compte ne restent pas.
+  clearApiCache();
   // Connexion : la progression d'invité a rejoint le compte. Déconnexion : plus de cookie.
   session.guest = false;
   window.dispatchEvent(new Event("session-change"));

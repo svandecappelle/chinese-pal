@@ -1,4 +1,6 @@
 import { api, escape } from "./api.js";
+import { flushReviews, pendingCount } from "./offline.js";
+import { toast } from "./ui.js";
 import { can, displayName, loadSession, session, setUser } from "./session.js";
 import { accountView } from "./views/account.js";
 import { adminView } from "./views/admin.js";
@@ -92,18 +94,46 @@ async function render() {
   }
 }
 
+// Indicateur de connexion, avec les réponses qui attendent le réseau.
 async function checkHealth() {
   const el = document.getElementById("status");
+  const pending = pendingCount();
+  const waiting = pending ? ` · ${pending} réponse${pending > 1 ? "s" : ""} en attente` : "";
+  if (!navigator.onLine) {
+    el.textContent = `● hors ligne${waiting}`;
+    el.title = "Les exercices déjà ouverts restent disponibles ; les réponses seront envoyées au retour du réseau.";
+    el.className = "status offline";
+    return;
+  }
   try {
     await api("/health");
-    el.textContent = "●";
+    el.textContent = `●${waiting}`;
     el.title = "Base connectée";
     el.className = "status ok";
   } catch {
-    el.textContent = "● base injoignable";
-    el.title = "";
+    el.textContent = `● serveur injoignable${waiting}`;
+    el.title = "Les exercices déjà ouverts restent disponibles hors ligne.";
     el.className = "status ko";
   }
+}
+
+// Réponses données hors ligne : envoyées dès que possible.
+async function sync() {
+  if (!pendingCount() || !navigator.onLine) return checkHealth();
+  const sent = await flushReviews();
+  if (sent) toast(`${sent} réponse${sent > 1 ? "s" : ""} donnée${sent > 1 ? "s" : ""} hors ligne envoyée${sent > 1 ? "s" : ""}.`);
+  checkHealth();
+}
+
+window.addEventListener("online", sync);
+// Serveur injoignable alors que le téléphone a du réseau (pas d'événement « online ») : on réessaie.
+setInterval(() => pendingCount() && sync(), 30000);
+window.addEventListener("offline", checkHealth);
+window.addEventListener("pending-reviews", checkHealth);
+
+// Application installable et utilisable hors ligne (voir app/pwa/sw.js).
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
 window.addEventListener("session-change", () => {
@@ -123,4 +153,4 @@ try {
 }
 renderHeader();
 render();
-checkHealth();
+sync();

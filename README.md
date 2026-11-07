@@ -153,9 +153,10 @@ utile quand la vérification souple du sens se trompe.
   changements de ton (不是 bú shì). Le modèle ne connaît pas « shéi » : 谁 est lu shuí.
   Le jeu de données de cette voix est réservé à un usage non commercial.
   Si le serveur ne peut pas parler, le navigateur utilise sa propre voix chinoise s'il en a une.
-- **Ordre des traits** : [Hanzi Writer](https://hanziwriter.org) (MIT), chargé depuis le CDN
-  jsDelivr, avec animation et entraînement au tracé dans la fiche d'un mot
-  ([strokes.js](backend/app/static/js/strokes.js)). Nécessite une connexion Internet.
+- **Ordre des traits** : [Hanzi Writer](https://hanziwriter.org) (MIT) et les tracés de 9 500
+  caractères ([hanzi-writer-data](https://github.com/chanind/hanzi-writer-data), Arphic Public
+  License), téléchargés à la construction de l'image et servis par l'app (`/strokes/<caractère>.json`),
+  avec animation et entraînement au tracé ([strokes.js](backend/app/static/js/strokes.js)).
 - **Fiches d'écriture** (onglet **Fiches**, ou « ✍ Fiches » sur un exercice et dans le
   vocabulaire) : des fiches A4 à imprimer
   ([writing.js](backend/app/static/js/views/writing.js)). On choisit des mots d'un exercice ou
@@ -166,7 +167,7 @@ utile quand la vérification souple du sens se trompe.
   grisés à repasser puis des cases vides. Réglages : quadrillage 田字格, 米字格 ou cases vides,
   taille des cases (12, 16 ou 20 mm), nombre de modèles grisés et de lignes, pinyin et sens
   affichés ou non (pour une dictée), caractères répétés ou non. Les tracés viennent des données de
-  Hanzi Writer ; sans connexion, les caractères sont écrits avec la police, sans les étapes.
+  Hanzi Writer ; un caractère qui n'y figure pas est écrit avec la police, sans les étapes.
 - **Lecture assistée** (onglet **Lecture**) : on colle ou tape un texte chinois ; il est découpé
   en mots d'après CC-CEDICT (le plus long mot connu d'abord), avec le pinyin au-dessus
   ([reading.js](backend/app/static/js/views/reading.js), `POST /api/ime/lecture`). Toucher un mot
@@ -176,6 +177,28 @@ utile quand la vérification souple du sens se trompe.
   découpés caractère par caractère.
 - **Exemples** : une phrase par mot HSK (avec pinyin et traduction), affichée avec la réponse.
   On peut en ajouter ou en supprimer depuis la fiche d'un mot (clic sur une ligne du vocabulaire).
+
+## Application installable et hors ligne
+
+L'application s'installe sur un téléphone ou un ordinateur (« Ajouter à l'écran d'accueil »,
+« Installer l'application ») : manifeste [manifest.webmanifest](backend/app/static/manifest.webmanifest)
+et icônes dessinées à partir des traits de 汉. Un service worker
+([pwa/sw.js](backend/app/pwa/sw.js), servi en `/sw.js` par l'app avec la version du frontend)
+la fait marcher sans réseau :
+
+- le frontend (HTML, CSS, JS, icônes, Hanzi Writer) est mis en cache dès la première visite ; une
+  nouvelle version de l'app remplace ce cache au chargement suivant ;
+- les réponses de l'API (exercices, mots, file du test…) viennent du réseau, et la dernière reçue
+  sert hors ligne : un exercice déjà ouvert avec le réseau se révise et se teste sans lui ;
+- les tracés et les prononciations déjà utilisés restent en cache ;
+- les réponses d'un test données hors ligne attendent dans le navigateur
+  ([offline.js](backend/app/static/js/offline.js)) et partent au retour du réseau (ou du serveur,
+  réessayé toutes les 30 s) ; l'indicateur de connexion affiche « hors ligne » et le nombre de
+  réponses en attente. La carte est reprogrammée au moment de l'envoi.
+- Le cache des réponses de l'API est vidé à la connexion et à la déconnexion.
+
+Les navigateurs n'activent le service worker qu'en HTTPS (ou sur `localhost`) : il ne fonctionne
+pas avec la configuration nginx sans certificat.
 
 ## Classificateurs
 
@@ -248,6 +271,7 @@ backend/
     classifiers.py   classificateurs : pinyin, « 一本书 », choix du mode de révision
     db.py            pool de connexions, migrations
     config.py        configuration (variables d'environnement)
+    pwa/sw.js        service worker (hors ligne), complété et servi par main.py
     routers/         routes API (compte, administration, vocabulaire, exercices, révisions,
                      statistiques, prononciation, saisie et lecture assistée)
     data/            listes importables (HSK) et leurs phrases d'exemple
@@ -259,6 +283,7 @@ backend/
       js/keyboard.js claviers à l'écran (caractères, pinyin)
       js/audio.js    lecture de l'audio de prononciation
       js/strokes.js  ordre des traits (Hanzi Writer) : animation et tracé
+      js/offline.js  réponses données hors ligne, envoyées au retour du réseau
       js/answers.js  vérification souple d'un sens tapé
       js/ui.js       notifications, pagination
       js/views/      écrans (exercices, éditeur, révision, test, suivi, vocabulaire, fiche d'un mot,

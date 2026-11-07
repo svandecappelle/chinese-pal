@@ -1,6 +1,7 @@
 import { api, escape } from "../api.js";
 import { attachKeyboard, close as closeKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
+import { charDataLoader } from "../strokes.js";
 
 // Fiches d'entraînement à l'écriture, à imprimer : pour chaque caractère, l'ordre des traits
 // pas à pas, un modèle, des modèles grisés à repasser, puis des cases vides (田字格 ou 米字格).
@@ -54,7 +55,7 @@ async function loadReadings(words) {
 function loadChar(char) {
   if (!charData.has(char)) {
     charData.set(char, window.HanziWriter
-      ? HanziWriter.loadCharacterData(char, { onLoadCharDataError: () => {} }).catch(() => null)
+      ? HanziWriter.loadCharacterData(char, { charDataLoader, onLoadCharDataError: () => {} }).catch(() => null)
       : Promise.resolve(null));
   }
   return charData.get(char);
@@ -296,7 +297,7 @@ export async function writingView(el, { id, deck }) {
       ${blocks}`;
     const missing = chars.filter((c) => !data.get(c));
     $("#sheet-status").textContent = missing.length
-      ? `Ordre des traits indisponible pour ${missing.join(" ")}${window.HanziWriter ? "" : " (pas de connexion ?)"} :
+      ? `Ordre des traits indisponible pour ${missing.join(" ")} :
          ${missing.length > 1 ? "ils sont écrits" : "il est écrit"} avec la police, sans les étapes.`
       : `${chars.length} caractère(s) · ${perRow} cases par ligne · format A4`;
   }

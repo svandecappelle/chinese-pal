@@ -14,6 +14,18 @@ WORKDIR /opt/dict
 RUN python -c "import gzip, urllib.request as u; \
 open('cedict_ts.u8', 'wb').write(gzip.decompress(u.urlopen('$CEDICT').read()))"
 
+# Ordre des traits : Hanzi Writer (MIT) et les tracés de 9 500 caractères (hanzi-writer-data,
+# Arphic Public License), servis par l'app au lieu d'un CDN : ils marchent aussi hors ligne.
+ARG NPM=https://registry.npmjs.org
+WORKDIR /opt/strokes
+RUN python -c "import tarfile, urllib.request as u; \
+t = tarfile.open(fileobj=u.urlopen('$NPM/hanzi-writer/-/hanzi-writer-3.7.2.tgz'), mode='r|gz'); \
+[open('hanzi-writer.min.js', 'wb').write(t.extractfile(m).read()) for m in t if m.name == 'package/dist/hanzi-writer.min.js']; \
+t = tarfile.open(fileobj=u.urlopen('$NPM/hanzi-writer-data/-/hanzi-writer-data-2.0.1.tgz'), mode='r|gz'); \
+import os; os.makedirs('data', exist_ok=True); \
+[open('data/' + m.name.split('/')[-1], 'wb').write(t.extractfile(m).read()) for m in t \
+ if m.isfile() and m.name.endswith('.json') and m.name.count('/') == 1 and not m.name.endswith('package.json')]"
+
 
 FROM docker.io/library/python:3.13-slim
 
@@ -27,6 +39,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY --from=tts-model /opt/tts /opt/tts
 COPY --from=tts-model /opt/dict /opt/dict
+COPY --from=tts-model /opt/strokes /opt/strokes
 COPY app ./app
 
 RUN useradd --system --uid 1001 appuser

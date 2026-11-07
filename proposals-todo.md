@@ -1,7 +1,8 @@
 # Idées de fonctionnalités (à faire)
 
 Propositions restantes, classées par public. Déjà faits : dictée (écoute), exercices sur les
-phrases d'exemple, entraînement aux tons, statistiques personnelles, lecture assistée.
+phrases d'exemple, entraînement aux tons, statistiques personnelles, lecture assistée, mode
+hors ligne (PWA).
 
 ## Élèves
 
@@ -25,5 +26,5 @@ phrases d'exemple, entraînement aux tons, statistiques personnelles, lecture as
 
 ## Technique
 
-- **Mode hors ligne (PWA)** : application installable sur téléphone, révision sans réseau ;
-  héberger les données d'ordre des traits sur le serveur au lieu du CDN.
+- **Hors ligne, suite** : préparer d'avance un exercice pour le hors ligne (tracés et audio de tous
+  ses mots) ; noter la date réelle des réponses données hors ligne.

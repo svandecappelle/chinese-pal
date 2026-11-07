@@ -2,6 +2,13 @@
 
 const HANZI = /[一-鿿]/;
 
+/** Tracés d'un caractère, servis par l'app (/strokes/<caractère>.json) : disponibles hors ligne. */
+export function charDataLoader(char, onLoad, onError) {
+  fetch(`strokes/${encodeURIComponent(char)}.json`)
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`Pas de tracé pour ${char}`))))
+    .then(onLoad, onError);
+}
+
 function writerOptions(size, outline) {
   const css = getComputedStyle(document.documentElement);
   return {
@@ -19,6 +26,7 @@ function writerOptions(size, outline) {
     showHintAfterMisses: 3,
     strokeAnimationSpeed: 1.2,
     delayBetweenStrokes: 150,
+    charDataLoader,
     onLoadCharDataError: () => {},
   };
 }
@@ -59,7 +67,7 @@ function quizOptions(size, outline) {
 export function mountStrokes(container, text, size = 110, { outline = true } = {}) {
   container.innerHTML = "";
   if (!window.HanziWriter) {
-    container.innerHTML = '<p class="muted">Ordre des traits indisponible (pas de connexion ?).</p>';
+    container.innerHTML = '<p class="muted">Ordre des traits indisponible.</p>';
     return { available: false, animate() {}, quiz() {}, cancel() {}, reveal() {} };
   }
   const chars = [...text].filter((c) => HANZI.test(c));
