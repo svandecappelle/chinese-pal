@@ -299,7 +299,9 @@ export async function studyView(el, { id }) {
   // Sur téléphone : glisser vers la gauche ou la droite pour changer de mot.
   let touchStart = null;
   card.addEventListener("touchstart", (e) => {
-    touchStart = e.touches.length === 1 ? [e.touches[0].clientX, e.touches[0].clientY] : null;
+    // Un trait tracé dans la case d'écriture n'est pas un geste pour changer de mot.
+    const tracing = e.target.closest?.(".stroke-quiz, .stroke-box");
+    touchStart = e.touches.length === 1 && !tracing ? [e.touches[0].clientX, e.touches[0].clientY] : null;
   }, { passive: true });
   card.addEventListener("touchend", (e) => {
     if (!touchStart || index >= words.length) return;

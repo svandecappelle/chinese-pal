@@ -248,6 +248,18 @@ kbd { font-family: inherit; font-size: .75em; opacity: .8; border: 1px solid cur
     linear-gradient(to right, transparent calc(50% - .5px), var(--border) 50%, transparent calc(50% + .5px)),
     linear-gradient(to bottom, transparent calc(50% - .5px), var(--border) 50%, transparent calc(50% + .5px));
 }
+.stroke-boxes { display: contents; }
+.stroke-boxes[hidden] { display: none; }
+/* Tracé : une grande case, le doigt dessine sans faire défiler la page */
+.stroke-quiz { display: flex; flex-direction: column; align-items: center; gap: .5rem; width: 100%; }
+.stroke-quiz-box { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.stroke-progress { display: flex; gap: .35rem; justify-content: center; }
+.stroke-progress span {
+  min-width: 2rem; padding: .1rem .3rem; text-align: center; font-size: 1.3rem; border-radius: 6px;
+  border: 1px solid var(--border); color: var(--muted, #888);
+}
+.stroke-progress span.current { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.stroke-progress span.done { color: var(--fg); }
 .center-actions { justify-content: center; }
 
 /* Fiche d'un mot */
@@ -531,3 +543,4 @@ mark.miss { background: color-mix(in srgb, var(--again) 25%, transparent); color
 .study-part.concealed:hover::after { color: var(--fg); border-color: var(--muted); }
 .study-practice { display: flex; flex-direction: column; align-items: center; gap: .4rem; margin: .5rem 0; }
 .study-practice .muted { margin: 0; }
+.study-practice > .strokes { align-self: stretch; }
