@@ -25,13 +25,21 @@ export const escape = (s) =>
 // `answer` : ce que l'élève fournit en mode test — meaning (sens tapé, vérifié avec souplesse),
 // strokes (caractères tracés dans l'ordre des traits), pinyin (tapé avec les tons), choice
 // (un classificateur parmi 4). `listen` : le mot présenté peut être écouté sans donner la réponse.
+// answer : type de réponse attendue ; audio : ce qui est joué d'office (« word » : le mot,
+// « sentence » : la phrase d'exemple) ; listen : bouton d'écoute du mot avant la réponse.
 export const MODES = {
   hanzi_to_meaning: { label: "汉字 → sens", answer: "meaning", listen: true },
   pinyin_to_meaning: { label: "Pinyin → 汉字 + sens", answer: "meaning", listen: true },
-  audio_to_meaning: { label: "Écoute → 汉字 + sens", answer: "meaning", audio: true },
+  audio_to_meaning: { label: "Écoute → sens", answer: "meaning", audio: "word" },
+  tones: { label: "Écoute → tons", answer: "tones", audio: "word" },
+  audio_to_pinyin: { label: "Écoute → pinyin (dictée)", answer: "pinyin", audio: "word" },
+  sentence_cloze: { label: "Phrase à trous", answer: "cloze" },
+  sentence_order: { label: "Phrase à remettre dans l'ordre", answer: "order" },
   meaning_to_hanzi: { label: "Sens → 汉字 (tracé)", answer: "strokes", listen: true },
+  audio_to_hanzi: { label: "Écoute → 汉字 (dictée tracée)", answer: "strokes", audio: "word" },
   hanzi_to_pinyin: { label: "汉字 → pinyin (saisie)", answer: "pinyin" },
   meaning_to_pinyin: { label: "Sens → pinyin (saisie)", answer: "pinyin" },
+  sentence_dictation: { label: "Dictée de phrase", answer: "sentence", audio: "sentence" },
   classifier: { label: "Nom → classificateur", answer: "choice", listen: true },
 };
 
@@ -40,4 +48,8 @@ export const ANSWER_HINTS = {
   strokes: "caractères tracés dans l'ordre des traits",
   pinyin: "pinyin tapé avec les tons, vérifié",
   choice: "choix parmi 4 · noms seulement",
+  tones: "ton de chaque syllabe, à cliquer ou au clavier (1–4, 5 neutre)",
+  cloze: "mot manquant de la phrase d'exemple, choix parmi 4",
+  order: "mots de la phrase d'exemple à remettre dans l'ordre",
+  sentence: "phrase d'exemple entendue, tapée en caractères (clavier 汉)",
 };

@@ -4,15 +4,30 @@ import { mountStrokes } from "../strokes.js";
 
 // Mode révision : les mots défilent avec tout ce qu'il faut retenir (caractères, pinyin, sens,
 // prononciation, classificateur, exemple). Aucune réponse attendue, rien n'est noté.
+// On peut choisir ce qu'on travaille : cette partie reste cachée jusqu'à ce qu'on la dévoile.
 
 const SETTINGS_KEY = "chinese.study";
 const SPEEDS = [3, 5, 8, 12];
+// Ce qu'on travaille : parties cachées (hanzi, pinyin, meaning, measure, example) et, au besoin,
+// mots concernés.
+const FOCUS = {
+  all: { label: "Tout voir", hide: [] },
+  meaning: { label: "Le sens", hide: ["meaning", "example"] },
+  hanzi: { label: "Les caractères", hide: ["hanzi", "example"] },
+  pinyin: { label: "Le pinyin", hide: ["pinyin", "example"] },
+  listen: { label: "L'écoute", hide: ["hanzi", "pinyin", "meaning", "measure", "example"], listen: true },
+  strokes: { label: "Le tracé", hide: [], strokes: true },
+  classifier: { label: "Le classificateur", hide: ["measure"], only: (w) => w.measure },
+};
 
 function readSettings() {
+  const defaults = { autoplay: true, speed: 5, focus: "all" };
   try {
-    return { autoplay: true, speed: 5, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") };
+    const settings = { ...defaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") };
+    if (!FOCUS[settings.focus]) settings.focus = "all";
+    return settings;
   } catch {
-    return { autoplay: true, speed: 5 };
+    return defaults;
   }
 }
 
@@ -37,10 +52,13 @@ export async function studyView(el, { id }) {
   const { exercise, words: allWords } = await api(`/exercises/${id}/words`);
   const settings = readSettings();
   const positionKey = `chinese.study.${id}`;
-  let words = allWords;
+  const focusWords = () => (FOCUS[settings.focus].only ? allWords.filter(FOCUS[settings.focus].only) : allWords);
+  let words = focusWords();
   let index = 0;
   let playing = false;
   let timer = null;
+  let revealed = true;
+  let practice = null;
   try {
     index = Math.min(Number(sessionStorage.getItem(positionKey)) || 0, Math.max(0, words.length - 1));
   } catch {
@@ -49,7 +67,7 @@ export async function studyView(el, { id }) {
 
   bindSpeakButtons(el);
 
-  if (!words.length) {
+  if (!allWords.length) {
     el.innerHTML = `<div class="empty"><p>Cet exercice ne contient encore aucun mot.</p>
       <p><a href="#/">Retour aux exercices</a></p></div>`;
     return;
@@ -62,6 +80,11 @@ export async function studyView(el, { id }) {
         <p class="muted small">Révision · sans note, à ton rythme</p>
       </div>
       <div class="study-settings">
+        <label class="small study-focus">Travailler
+          <select id="focus" aria-label="Ce que tu travailles">
+            ${Object.entries(FOCUS).map(([v, f]) => `<option value="${v}" ${v === settings.focus ? "selected" : ""}>${f.label}</option>`).join("")}
+          </select>
+        </label>
         <label class="check small" title="Prononcer chaque mot">
           <input type="checkbox" id="autoplay" ${settings.autoplay ? "checked" : ""}> 🔊 auto
         </label>
@@ -79,7 +102,7 @@ export async function studyView(el, { id }) {
       <button type="button" id="next">Suivant →</button>
     </div>
     <p class="muted center small">
-      Raccourcis : <kbd>←</kbd> <kbd>→</kbd> ou <kbd>Espace</kbd> · <kbd>A</kbd> écouter ·
+      Raccourcis : <kbd>←</kbd> <kbd>→</kbd> ou <kbd>Espace</kbd> (dévoiler puis suivant) · <kbd>A</kbd> écouter ·
       <kbd>T</kbd> traits · <kbd>P</kbd> défilement ·
       <a href="#/exercices/${id}/test">Passer au test</a> · <a href="#/">Quitter</a>
     </p>`;
@@ -92,22 +115,37 @@ export async function studyView(el, { id }) {
     } catch {
       // Position non mémorisée.
     }
+    practice?.cancel();
+    practice = null;
     const w = words[index];
+    const focus = FOCUS[settings.focus];
+    // Partie cachée tant qu'on ne l'a pas dévoilée (clic, Espace ou →).
+    const hidden = focus.hide.filter((part) => part !== "measure" || w.measure).filter((part) => part !== "example" || w.example);
+    revealed = !hidden.length;
+    const part = (name, html) => (html ? `<div class="study-part ${hidden.includes(name) ? "concealed" : ""}"
+      data-part="${name}" ${hidden.includes(name) ? 'title="Clique pour dévoiler"' : ""}>${html}</div>` : "");
     el.querySelector("#bar").style.width = `${((index + 1) / words.length) * 100}%`;
     el.querySelector("#prev").disabled = index === 0;
-    el.querySelector("#next").textContent = index === words.length - 1 ? "Terminer ✓" : "Suivant →";
+    updateNext();
     card.innerHTML = `
       <span class="tag">${index + 1} / ${words.length}</span>
-      <div class="answer-word">
+      ${focus.listen ? `<button type="button" class="big-audio" data-speak="${escape(w.hanzi)}"
+        data-pinyin="${escape(w.pinyin)}" aria-label="Réécouter (A)">🔊</button>` : ""}
+      ${part("hanzi", `<div class="answer-word">
         <span class="big-hanzi">${escape(w.hanzi)}</span>
         ${speakButton(w.hanzi, { pinyin: w.pinyin })}
         <button type="button" class="icon-button" data-strokes title="Ordre des traits (T)"
           aria-label="Ordre des traits">✍</button>
-      </div>
+      </div>`)}
       <div class="strokes" id="strokes"></div>
-      <div class="pinyin">${escape(w.pinyin)}</div>
-      <div class="meaning">${escape(w.translation)}</div>
-      ${w.measure ? `
+      ${focus.strokes ? `<div class="study-practice">
+        <button type="button" class="secondary small-button" data-practice>✍ Je m'entraîne à tracer</button>
+        <div class="strokes" id="practice"></div>
+        <p class="muted small" id="practice-result"></p>
+      </div>` : ""}
+      ${part("pinyin", `<div class="pinyin">${escape(w.pinyin)}</div>`)}
+      ${part("meaning", `<div class="meaning">${escape(w.translation)}</div>`)}
+      ${part("measure", w.measure ? `
         <div class="measure" title="Classificateur">
           <span class="muted small">量词</span>
           <span class="hanzi-sm">${escape(w.measure.hanzi)}</span>
@@ -115,20 +153,48 @@ export async function studyView(el, { id }) {
           <span class="muted">${escape(w.measure.pinyin)}</span>
           ${w.classifiers.length > 1 ? `<span class="muted small">· aussi
             ${w.classifiers.slice(1).map((c) => escape(c.hanzi)).join("、")}</span>` : ""}
-        </div>` : ""}
-      ${w.example ? `
+        </div>` : "")}
+      ${part("example", w.example ? `
         <div class="example">
           <div>${escape(w.example.hanzi)} ${speakButton(w.example.hanzi, { label: "Écouter la phrase" })}</div>
           <div class="muted">${escape(w.example.pinyin)}</div>
           <div>${escape(w.example.translation)}</div>
-        </div>` : ""}`;
+        </div>` : "")}`;
     card.querySelector("[data-strokes]").addEventListener("click", showStrokes);
-    if (settings.autoplay) speak(w.hanzi, w.pinyin);
+    card.querySelectorAll(".concealed").forEach((p) => p.addEventListener("click", reveal, { once: true }));
+    card.querySelector("[data-practice]")?.addEventListener("click", startPractice);
+    if (settings.autoplay || focus.listen) speak(w.hanzi, w.pinyin);
+    if (focus.strokes) showStrokes();
     schedule();
+  }
+
+  // Dévoile les parties cachées ; le défilement passe ensuite au mot suivant.
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+    card.querySelectorAll(".concealed").forEach((p) => p.classList.remove("concealed"));
+    updateNext();
+    schedule();
+  }
+
+  function updateNext() {
+    el.querySelector("#next").textContent = !revealed ? "Voir la réponse"
+      : index === words.length - 1 ? "Terminer ✓" : "Suivant →";
   }
 
   function showStrokes() {
     mountStrokes(card.querySelector("#strokes"), words[index].hanzi, 90).animate();
+  }
+
+  // Tracé avec le modèle grisé, trait par trait (sans note).
+  function startPractice() {
+    stop();
+    const result = card.querySelector("#practice-result");
+    result.textContent = "Trace chaque trait dans l'ordre sur le modèle.";
+    practice = mountStrokes(card.querySelector("#practice"), words[index].hanzi, 120, { outline: true });
+    practice.quiz((mistakes) => {
+      result.textContent = mistakes ? `Terminé avec ${mistakes} erreur(s) : recommence pour t'améliorer.` : "Parfait, aucune erreur !";
+    });
   }
 
   function renderEnd() {
@@ -151,8 +217,21 @@ export async function studyView(el, { id }) {
     }
   }
 
+  // Suivant : dévoile d'abord ce qui est caché.
+  function advance() {
+    if (!revealed) reveal();
+    else go(index + 1);
+  }
+
   function go(target) {
     el.querySelector("#next").disabled = false;
+    if (!words.length) {
+      stop();
+      card.innerHTML = `<p>Aucun mot de cet exercice n'a de classificateur : choisis autre chose à travailler.</p>`;
+      el.querySelector("#next").disabled = true;
+      el.querySelector("#prev").disabled = true;
+      return;
+    }
     if (target >= words.length) return renderEnd();
     index = Math.max(0, target);
     render();
@@ -161,7 +240,7 @@ export async function studyView(el, { id }) {
   // Défilement automatique : un mot toutes les `speed` secondes.
   function schedule() {
     clearTimeout(timer);
-    if (playing) timer = setTimeout(() => go(index + 1), settings.speed * 1000);
+    if (playing) timer = setTimeout(advance, settings.speed * 1000);
   }
 
   function setPlaying(value) {
@@ -177,7 +256,13 @@ export async function studyView(el, { id }) {
   }
 
   el.querySelector("#prev").addEventListener("click", () => go(Math.min(index, words.length) - 1));
-  el.querySelector("#next").addEventListener("click", () => go(index + 1));
+  el.querySelector("#next").addEventListener("click", advance);
+  el.querySelector("#focus").addEventListener("change", (e) => {
+    settings.focus = e.target.value;
+    writeSettings(settings);
+    words = focusWords();
+    go(0);
+  });
   el.querySelector("#play").addEventListener("click", () => setPlaying(!playing));
   el.querySelector("#speed").addEventListener("change", (e) => {
     settings.speed = Number(e.target.value);
@@ -189,7 +274,7 @@ export async function studyView(el, { id }) {
     writeSettings(settings);
   });
   el.querySelector("#shuffle").addEventListener("click", () => {
-    words = shuffle(allWords);
+    words = shuffle(focusWords());
     go(0);
   });
 
@@ -198,7 +283,7 @@ export async function studyView(el, { id }) {
     const key = e.key.toLowerCase();
     if (e.key === "ArrowRight" || e.key === " ") {
       e.preventDefault();
-      if (index < words.length) go(index + 1);
+      if (index < words.length) advance();
     } else if (e.key === "ArrowLeft") {
       e.preventDefault();
       if (index > 0) go(Math.min(index, words.length) - 1);
@@ -222,14 +307,15 @@ export async function studyView(el, { id }) {
     const dy = e.changedTouches[0].clientY - touchStart[1];
     touchStart = null;
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx < 0) go(index + 1);
+    if (dx < 0) advance();
     else if (index > 0) go(index - 1);
   });
 
   document.addEventListener("keydown", onKey);
-  render();
+  go(index);
   return () => {
     clearTimeout(timer);
+    practice?.cancel();
     document.removeEventListener("keydown", onKey);
     stopSpeaking();
   };

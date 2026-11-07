@@ -45,6 +45,8 @@ class Dictionary:
         self.by_key: dict[str, list[Entry]] | None = None
         self.keys: list[str] = []
         self.classifiers: dict[str, list[str]] = {}
+        self.char_syllables: dict[str, set[str]] = {}
+        self.words: set[str] = set()
         self.lock = threading.Lock()
 
     def load(self) -> None:
@@ -106,6 +108,14 @@ class Dictionary:
             key = re.sub(r"[0-9 ]", "", pinyin)
             by_key.setdefault(key, []).append(Entry(hanzi, pinyin, key, score))
         self.keys = sorted(by_key)
+        # Lectures sans ton de chaque caractère (« lv ») et mots connus, pour aligner un pinyin
+        # sur ses caractères et découper une phrase en mots (drills.py).
+        char_syllables: dict[str, set[str]] = {}
+        for hanzi, pinyin in entries:
+            for char, syllable in zip(hanzi, pinyin.split()):
+                char_syllables.setdefault(char, set()).add(re.sub(r"[0-9]", "", syllable))
+        self.char_syllables = char_syllables
+        self.words = {hanzi for hanzi, _ in entries}
         self.by_key = by_key
         log.info("Dictionnaire de saisie chargé : %d entrées", len(entries))
 

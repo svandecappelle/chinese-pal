@@ -4,19 +4,22 @@ from fastapi import APIRouter, Depends, HTTPException
 from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from pydantic import BaseModel, Field
 
-from .. import auth, classifiers
+from .. import auth, classifiers, drills
 from ..db import pool
 from ..srs import CardState, previews
 
 router = APIRouter(prefix="/api/exercises", tags=["exercices"])
 
 # Modes de révision, dans l'ordre où les nouvelles cartes sont présentées
-# (reconnaître avant de produire). « classifier » ne concerne que les mots qui en ont un.
+# (reconnaître avant de produire). « classifier » ne concerne que les mots qui en ont un, les
+# modes sur les phrases que les mots qui ont une phrase d'exemple les contenant.
 Mode = Literal[
-    "hanzi_to_meaning", "pinyin_to_meaning", "audio_to_meaning", "meaning_to_hanzi",
-    "hanzi_to_pinyin", "meaning_to_pinyin", "classifier",
+    "hanzi_to_meaning", "pinyin_to_meaning", "audio_to_meaning", "tones", "audio_to_pinyin",
+    "sentence_cloze", "sentence_order", "meaning_to_hanzi", "audio_to_hanzi",
+    "hanzi_to_pinyin", "meaning_to_pinyin", "sentence_dictation", "classifier",
 ]
 MODES = get_args(Mode)
+SENTENCE_MODES = ("sentence_cloze", "sentence_order", "sentence_dictation")
 
 # Cartes d'un exercice (une ligne par mot et par mode), avec leur état de révision éventuel.
 # Paramètres : %(exercise_id)s, %(user_id)s (la progression est propre à chaque utilisateur). S'utilise en préfixe d'une requête sur `cards`.
@@ -42,7 +45,9 @@ cards AS (
     CROSS JOIN ex_modes m
     LEFT JOIN review_states rs
            ON rs.user_id = %(user_id)s AND rs.word_id = w.id AND rs.mode = m.mode
-    WHERE m.mode <> 'classifier' OR cardinality(w.classifiers) > 0
+    WHERE (m.mode <> 'classifier' OR cardinality(w.classifiers) > 0)
+      AND (m.mode NOT IN ('sentence_cloze', 'sentence_order', 'sentence_dictation') OR EXISTS (
+          SELECT 1 FROM examples e WHERE e.word_id = w.id AND strpos(e.hanzi, w.hanzi) > 0))
 )
 """
 
@@ -89,6 +94,9 @@ def card_payload(row: dict) -> dict:
     }
     if row["mode"] == "classifier":
         payload["choices"] = classifiers.choices(word_classifiers)
+    if row["mode"] == "tones":
+        # None si le pinyin ne s'aligne pas : le client demande alors le pinyin tapé.
+        payload["syllables"] = drills.syllables(row["hanzi"], row["pinyin"])
     return payload
 
 
@@ -253,6 +261,20 @@ def delete_exercise(exercise_id: int, user: dict = Depends(auth.current_user)):
         conn.execute("DELETE FROM exercises WHERE id = %s", (exercise_id,))
 
 
+def first_examples(conn, word_ids: list[int]) -> dict[int, dict]:
+    """Première phrase d'exemple de chaque mot, en préférant celles qui contiennent le mot
+    (les modes sur les phrases en ont besoin)."""
+    return {
+        e["word_id"]: e for e in conn.execute(
+            """SELECT DISTINCT ON (e.word_id) e.word_id, e.hanzi, e.pinyin, e.translation
+               FROM examples e JOIN words w ON w.id = e.word_id
+               WHERE e.word_id = ANY(%s)
+               ORDER BY e.word_id, strpos(e.hanzi, w.hanzi) = 0, e.id""",
+            (word_ids,),
+        )
+    }
+
+
 @router.get("/{exercise_id}/session")
 def get_session(exercise_id: int, user: dict | None = Depends(auth.visitor)):
     """File de cartes du jour : cartes dues + nouvelles cartes dans la limite quotidienne.
@@ -275,18 +297,25 @@ def get_session(exercise_id: int, user: dict | None = Depends(auth.visitor)):
             params,
         ).fetchall()
         cards = interleave(due, new)
-        # Première phrase d'exemple de chaque mot, affichée avec la réponse.
-        examples = {
-            e["word_id"]: e for e in conn.execute(
-                """SELECT DISTINCT ON (word_id) word_id, hanzi, pinyin, translation
-                   FROM examples WHERE word_id = ANY(%s) ORDER BY word_id, id""",
-                ([c["word_id"] for c in cards],),
-            )
-        }
+        examples = first_examples(conn, [c["word_id"] for c in cards])
+        # Autres choix des phrases à trous : mots de l'exercice, complétés au hasard dans le
+        # vocabulaire (ceux qui partagent un classificateur avec le mot attendu sont écartés).
+        pool_words = {}
+        if any(c["mode"] in SENTENCE_MODES for c in cards):
+            for r in conn.execute(CARDS_CTE + """SELECT DISTINCT hanzi, classifiers FROM cards
+                                                 UNION ALL (SELECT hanzi, classifiers FROM words
+                                                            ORDER BY random() LIMIT 60)""", params):
+                pool_words.setdefault(r["hanzi"], r["classifiers"])
     payloads = []
     for c in cards:
         payload = card_payload(c)
-        payload["example"] = examples.get(c["word_id"])
+        example = payload["example"] = examples.get(c["word_id"])
+        if c["mode"] in SENTENCE_MODES and example:
+            if c["mode"] == "sentence_order":
+                payload["tiles"] = drills.tiles(example["hanzi"], c["hanzi"])
+            # Phrase trop courte pour la remettre dans l'ordre : phrase à trous à la place.
+            if c["mode"] == "sentence_cloze" or (c["mode"] == "sentence_order" and not payload["tiles"]):
+                payload["cloze"] = drills.cloze(example["hanzi"], c["hanzi"], pool_words, c["classifiers"])
         payloads.append(payload)
     return {"exercise": exercise, "stats": stats, "cards": payloads}
 

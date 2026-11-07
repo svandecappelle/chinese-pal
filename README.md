@@ -101,7 +101,10 @@ Un exercice se lance de deux façons :
 - **Réviser** : sans pression, les mots défilent un par un avec leurs caractères, leur pinyin,
   leur sens, leur prononciation, leur classificateur et une phrase d'exemple. Rien n'est noté.
   `←` / `→` ou `Espace` (glisser sur téléphone), défilement automatique (3 à 12 s par mot),
-  mélange, prononciation automatique.
+  mélange, prononciation automatique. **Travailler** choisit ce qu'on révise : tout voir, le sens,
+  les caractères, le pinyin, l'écoute (le mot est seulement prononcé), le tracé (ordre des traits
+  animé puis tracé sur le modèle) ou le classificateur (mots qui en ont un). La partie travaillée
+  reste cachée jusqu'au clic, `Espace` ou `→`, puis le mot suivant arrive.
 - **Test** : chaque carte attend une réponse, vérifiée puis notée pour la répétition espacée.
 
 Une **carte** = un mot + un mode. Ce que l'élève fournit en test :
@@ -109,9 +112,15 @@ Une **carte** = un mot + un mode. Ce que l'élève fournit en test :
 | Mode | Réponse |
 |---|---|
 | 汉字 → sens, pinyin → sens, écoute → sens | le sens tapé en français ; un des sens suffit, accents, articles et précisions entre parenthèses facultatifs, une faute de frappe est tolérée ([answers.js](backend/app/static/js/answers.js)) |
-| sens → 汉字 | les caractères **tracés** trait par trait, sans modèle, dans l'ordre des traits (Hanzi Writer) ; après 3 essais ratés le trait attendu clignote, « Je ne sais pas » montre la réponse |
-| 汉字 → pinyin, sens → pinyin | le pinyin tapé avec les tons : chiffres (`ni3 hao3` → `nǐ hǎo`, `lv4` → `lǜ`, ton neutre sans chiffre) ou accents ; bonnes syllabes mais tons faux signalés ([pinyin.js](backend/app/static/js/pinyin.js)) |
+| sens → 汉字, écoute → 汉字 (dictée tracée) | les caractères **tracés** trait par trait, sans modèle, dans l'ordre des traits (Hanzi Writer) ; après 3 essais ratés le trait attendu clignote, « Je ne sais pas » montre la réponse |
+| 汉字 → pinyin, sens → pinyin, écoute → pinyin (dictée) | le pinyin tapé avec les tons : chiffres (`ni3 hao3` → `nǐ hǎo`, `lv4` → `lǜ`, ton neutre sans chiffre) ou accents ; bonnes syllabes mais tons faux signalés ([pinyin.js](backend/app/static/js/pinyin.js)) |
 | classificateur | le bon classificateur parmi quatre (一 ？ 书) ; seuls les mots qui en ont un forment des cartes |
+| écoute → tons | le ton de chaque syllabe entendue (boutons ou touches `1`–`4`, `5` neutre) ; ce sont les tons écrits, sans les changements de ton de l'oral (你好 s'entend « ní hǎo », s'écrit nǐ hǎo). Le pinyin est aligné sur les caractères grâce à CC-CEDICT ([drills.py](backend/app/drills.py)) |
+| phrase à trous | le mot manquant de la phrase d'exemple parmi quatre, la traduction de la phrase étant donnée ; les autres choix ne partagent pas de classificateur avec le mot (pour éviter 一只狗 / 一只猫) |
+| phrase à remettre dans l'ordre | les mots de la phrase d'exemple, mélangés, à cliquer dans l'ordre (ou leur numéro, `⌫` pour retirer) ; découpage en mots par le dictionnaire, le mot révisé restant d'un seul tenant. Une phrase de moins de 3 mots devient une phrase à trous |
+| dictée de phrase | la phrase d'exemple entendue, tapée en caractères avec le clavier 汉 ; ponctuation facultative, les caractères manquants ou faux sont surlignés (presque juste à 75 % → Difficile) |
+
+Les modes sur les phrases ne concernent que les mots qui ont une phrase d'exemple qui les contient.
 
 Quand le mot présenté est en chinois (ou que la réponse n'est pas sa prononciation), un bouton 🔊
 (touche `A`) permet de l'entendre. La note est **suggérée** d'après la réponse (sans faute → Bien,
@@ -221,6 +230,7 @@ backend/
     srs.py           algorithme de répétition espacée
     tts.py           synthèse vocale (prononciation)
     ime.py           caractères candidats pour un pinyin (clavier 汉)
+    drills.py        tons d'un mot, phrases découpées en mots, phrases à trous (modes de test)
     classifiers.py   classificateurs : pinyin, « 一本书 », choix du mode de révision
     db.py            pool de connexions, migrations
     config.py        configuration (variables d'environnement)
