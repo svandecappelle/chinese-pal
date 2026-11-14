@@ -200,6 +200,13 @@ la fait marcher sans réseau :
 Les navigateurs n'activent le service worker qu'en HTTPS (ou sur `localhost`) : il ne fonctionne
 pas avec la configuration nginx sans certificat.
 
+**Application Android** : `make apk` construit un APK (Trusted Web Activity, avec
+[Bubblewrap](https://github.com/GoogleChromeLabs/bubblewrap)) qui ouvre le site en plein écran
+avec le Chrome du téléphone, et le met en téléchargement sur le site
+(`/android/chinese-pal.apk`). Sur un téléphone Android, un bandeau « 📱 Application Android »
+propose de le télécharger. Les mises à jour du site arrivent dans l'appli sans nouvel APK. Voir
+[deploy/README.md](deploy/README.md#application-android).
+
 ## Classificateurs
 
 Chaque nom peut avoir ses classificateurs (量词 : 一**本**书, 一**只**猫), affichés avec la réponse en

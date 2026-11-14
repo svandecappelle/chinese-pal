@@ -79,6 +79,41 @@ Pense aussi à copier `backups/` ailleurs que sur le serveur.
 Mise à jour depuis une version sans comptes : la progression existante revient au compte
 `admin`, créé au redémarrage ; `make upgrade` affiche son mot de passe généré (à noter).
 
+## Application Android
+
+Une fois le site en ligne en HTTPS :
+
+```bash
+make apk
+```
+
+- **Ce que ça fait** : construit, dans un conteneur, une application Android (Trusted Web Activity)
+  qui ouvre `https://DOMAIN` en plein écran avec le Chrome du téléphone, puis la met en
+  téléchargement sur `https://DOMAIN/android/chinese-pal.apk` ; un bandeau la propose sur les
+  téléphones Android.
+- **Outils** : Node, Bubblewrap, JDK 17 et SDK Android sont dans l'image `localhost/chinese-apk`
+  ([android/Dockerfile](android/Dockerfile)), rien n'est installé sur le serveur. La première
+  construction télécharge environ 1,5 Go ; les suivantes durent une minute ou deux.
+- **Fichiers produits** : `downloads/android/chinese-pal.apk` et `info.json`, servis par l'app,
+  et `downloads/assetlinks.json`, servi en `/.well-known/assetlinks.json`. Ce dernier prouve à
+  Android que l'appli et le site vont ensemble ; sans lui, l'appli affiche une barre d'adresse.
+- **Clé de signature** : `android/signing.keystore`, créée à la première construction, avec son
+  mot de passe dans `.env` (`ANDROID_KEYSTORE_PASSWORD`). `make backup` copie la clé dans
+  `backups/`. **Garde-les aussi ailleurs** que sur le serveur : une
+  nouvelle version de l'appli doit être signée avec la même clé, sinon elle ne s'installe pas
+  par-dessus l'ancienne (il faudrait désinstaller).
+- **Quand reconstruire** : seulement si le nom, l'icône ou le domaine changent ; le contenu vient
+  du site. Identifiant Android : le domaine à l'envers (`com.example.chinois.app`), ou
+  `ANDROID_PACKAGE` dans `.env` ; ne plus le changer une fois l'appli diffusée.
+- **Installation sur le téléphone** : Android demande d'autoriser l'installation depuis le
+  navigateur (« sources inconnues ») et Play Protect peut avertir la première fois. Android 7
+  minimum, avec Chrome (sinon l'appli s'ouvre dans un onglet du navigateur par défaut). Une
+  publication sur le Play Store éviterait ces étapes (le fichier `.aab` est aussi produit, dans
+  `android/project/`).
+- **Essai avant la mise en ligne** : `ICON_BASE=http://app:8000 APK_NETWORK=chinese_default
+  make apk DOMAIN=...` prend icônes et manifeste sur l'app locale (l'APK construit n'ouvrira le
+  site qu'une fois celui-ci en ligne sur ce domaine).
+
 ## Au quotidien
 
 `make` affiche toutes les commandes : `logs`, `ps`, `restart`, `health`, `shell-db`…

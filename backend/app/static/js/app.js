@@ -131,6 +131,45 @@ setInterval(() => pendingCount() && sync(), 30000);
 window.addEventListener("offline", checkHealth);
 window.addEventListener("pending-reviews", checkHealth);
 
+// Sur un téléphone Android, hors de l'application : bandeau pour télécharger l'APK (make apk),
+// s'il y en a un. Fermé, il ne revient qu'avec une nouvelle version.
+const ANDROID_BANNER_KEY = "chinese.androidBanner";
+
+async function offerAndroidApp() {
+  const inApp = document.referrer.startsWith("android-app://") || sessionStorage.getItem("chinese.inApp");
+  if (inApp) sessionStorage.setItem("chinese.inApp", "1");
+  if (!/Android/i.test(navigator.userAgent) || inApp || matchMedia("(display-mode: standalone)").matches) return;
+  let info;
+  try {
+    const res = await fetch("android/info.json", { cache: "no-store" });
+    if (!res.ok) return;
+    info = await res.json();
+  } catch {
+    return;
+  }
+  try {
+    if (localStorage.getItem(ANDROID_BANNER_KEY) === info.version) return;
+  } catch {
+    // Stockage indisponible : le bandeau s'affiche.
+  }
+  const banner = document.createElement("div");
+  banner.className = "app-banner";
+  banner.innerHTML = `
+    <span>📱 <strong>Application Android</strong> · ${Math.max(1, Math.round(info.size / 1024))} Ko
+      <small>Android peut demander d'autoriser l'installation depuis ce site.</small></span>
+    <a class="button small-button" href="android/${escape(info.file)}" download>Télécharger</a>
+    <button type="button" class="icon-button" aria-label="Fermer">✕</button>`;
+  banner.querySelector("button").addEventListener("click", () => {
+    banner.remove();
+    try {
+      localStorage.setItem(ANDROID_BANNER_KEY, info.version);
+    } catch {
+      // Le bandeau reviendra au prochain chargement.
+    }
+  });
+  document.querySelector("header").after(banner);
+}
+
 // Application installable et utilisable hors ligne (voir app/pwa/sw.js).
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -154,3 +193,4 @@ try {
 renderHeader();
 render();
 sync();
+offerAndroidApp();

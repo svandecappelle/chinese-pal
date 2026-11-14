@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from functools import cache
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -22,6 +22,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 SW_TEMPLATE = Path(__file__).parent / "pwa" / "sw.js"
 STROKES_DIR = Path(settings.strokes_dir)
 HANZI_WRITER = STROKES_DIR / "hanzi-writer.min.js"
+DOWNLOADS_DIR = Path(settings.downloads_dir)
 
 
 @asynccontextmanager
@@ -80,6 +81,29 @@ def service_worker() -> str:
 def sw_js():
     return Response(service_worker(), media_type="text/javascript",
                     headers={"Service-Worker-Allowed": "/"})
+
+
+@app.get("/.well-known/assetlinks.json", include_in_schema=False)
+def asset_links():
+    """Lien entre l'application Android (make apk) et le site : sans lui, l'appli affiche une
+    barre d'adresse au lieu d'ouvrir le site en plein écran."""
+    path = DOWNLOADS_DIR / "assetlinks.json"
+    if not path.is_file():
+        raise HTTPException(404, "Pas d'application Android")
+    return FileResponse(path, media_type="application/json")
+
+
+@app.get("/android/{name}", include_in_schema=False)
+def android_download(name: str):
+    """APK de l'application Android et ses informations (version, taille), écrits par make apk."""
+    types = {"chinese-pal.apk": "application/vnd.android.package-archive", "info.json": "application/json"}
+    path = DOWNLOADS_DIR / "android" / name
+    if name not in types or not path.is_file():
+        raise HTTPException(404, "Pas d'application Android")
+    headers = {"Cache-Control": "no-cache"}
+    if name.endswith(".apk"):
+        headers["Content-Disposition"] = 'attachment; filename="chinese-pal.apk"'
+    return FileResponse(path, media_type=types[name], headers=headers)
 
 
 @app.get("/vendor/hanzi-writer.min.js", include_in_schema=False)

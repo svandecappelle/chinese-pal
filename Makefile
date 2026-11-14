@@ -9,7 +9,7 @@ APP_PORT := $(shell grep -E '^APP_PORT=' .env 2>/dev/null | cut -d= -f2)
 APP_PORT := $(or $(APP_PORT),8000)
 
 .DEFAULT_GOAL := help
-.PHONY: help install upgrade up down restart logs ps build health backup restore shell-db password
+.PHONY: help install upgrade up down restart logs ps build health backup restore shell-db password apk
 
 help: ## Affiche cette aide
 	@echo "汉语 · Révision de vocabulaire chinois"
@@ -27,6 +27,9 @@ install: ## Installe tout sur ce serveur (DOMAIN=... EMAIL=... ; relançable)
 
 upgrade: ## Met à jour : sauvegarde, git pull, reconstruit, redémarre
 	@bash deploy/upgrade.sh
+
+apk: ## Construit l'application Android et la met en téléchargement sur le site (DOMAIN=...)
+	@bash deploy/apk.sh
 
 # ------------------------------------------------------------------ au quotidien
 

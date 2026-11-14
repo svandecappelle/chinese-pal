@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     cedict_path: str = "/opt/dict/cedict_ts.u8"
     # Hanzi Writer (hanzi-writer.min.js) et les tracés des caractères (data/<caractère>.json).
     strokes_dir: str = "/opt/strokes"
+    # Fichiers à télécharger, écrits par make apk : android/ (APK, info.json), assetlinks.json.
+    downloads_dir: str = "/srv/downloads"
     # Premier administrateur (voir auth.bootstrap_admin) ; mot de passe vide : généré.
     admin_username: str = "admin"
     admin_password: str = ""

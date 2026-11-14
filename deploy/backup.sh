@@ -18,3 +18,9 @@ mv "$file.tmp" "$file"
 info "sauvegarde : $file ($(du -h "$file" | cut -f1))"
 
 find backups -name 'chinese-*.sql.gz' -mtime "+$BACKUP_DAYS" -print -delete | sed 's/^/  supprimée (ancienne) : /'
+
+# Clé de signature de l'application Android (make apk) : irremplaçable, copiée avec les sauvegardes.
+if [ -f android/signing.keystore ]; then
+  cp android/signing.keystore backups/android-signing.keystore
+  info "clé Android : backups/android-signing.keystore (mot de passe : ANDROID_KEYSTORE_PASSWORD de .env)"
+fi

@@ -4,3 +4,7 @@ __pycache__/
 .venv/
 .claude/settings.local.json
 backups/
+# Application Android : clé de signature et projet généré (make apk), fichiers téléchargeables.
+/android/
+downloads/*
+!downloads/.gitkeep
