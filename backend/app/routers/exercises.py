@@ -20,6 +20,8 @@ Mode = Literal[
 ]
 MODES = get_args(Mode)
 SENTENCE_MODES = ("sentence_cloze", "sentence_order", "sentence_dictation")
+# Modes répondus syllabe par syllabe : tons, et pinyin tapé (lettres puis ton de chaque syllabe).
+SYLLABLE_MODES = {"tones", "hanzi_to_pinyin", "meaning_to_pinyin", "audio_to_pinyin"}
 
 # Cartes d'un exercice (une ligne par mot et par mode), avec leur état de révision éventuel.
 # Paramètres : %(exercise_id)s, %(user_id)s (la progression est propre à chaque utilisateur). S'utilise en préfixe d'une requête sur `cards`.
@@ -94,8 +96,9 @@ def card_payload(row: dict) -> dict:
     }
     if row["mode"] == "classifier":
         payload["choices"] = classifiers.choices(word_classifiers)
-    if row["mode"] == "tones":
-        # None si le pinyin ne s'aligne pas : le client demande alors le pinyin tapé.
+    if row["mode"] in SYLLABLE_MODES:
+        # Une case par syllabe (tons, ou pinyin tapé syllabe par syllabe). None si le pinyin ne
+        # s'aligne pas sur les caractères : le client demande alors le pinyin tapé d'un bloc.
         payload["syllables"] = drills.syllables(row["hanzi"], row["pinyin"])
     return payload
 

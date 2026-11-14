@@ -137,6 +137,38 @@ function writeAutoplay(value) {
   }
 }
 
+// Saisie du pinyin : « syllables » (une case par syllabe, puis le ton) ou « free » (ni3 hao3).
+const PINYIN_STYLE_KEY = "chinese.pinyinStyle";
+
+function readPinyinStyle() {
+  try {
+    return localStorage.getItem(PINYIN_STYLE_KEY) === "free" ? "free" : "syllables";
+  } catch {
+    return "syllables";
+  }
+}
+
+function writePinyinStyle(style) {
+  try {
+    localStorage.setItem(PINYIN_STYLE_KEY, style);
+  } catch {
+    // Stockage indisponible : le choix vaut pour cette carte seulement.
+  }
+}
+
+// Lettres d'une syllabe sans ton, ü noté v ; un ton tapé en accent (ǐ) est rendu à part.
+function splitSyllable(text) {
+  const marks = { "\u0304": 1, "\u0301": 2, "\u030C": 3, "\u0300": 4 };
+  let tone = null;
+  let letters = "";
+  for (const ch of text.toLowerCase().replace(/u:/g, "v").normalize("NFD")) {
+    if (marks[ch]) tone = marks[ch];
+    else if (ch === "\u0308") letters = letters.replace(/u$/, "v");
+    else if (/[a-z]/.test(ch)) letters += ch;
+  }
+  return { letters, tone };
+}
+
 // Modes choisis avant le test, mémorisés par exercice.
 const chosenKey = (id) => `chinese.testModes.${id}`;
 
@@ -250,6 +282,9 @@ export async function playView(el, { id }) {
   // Réponses en cours : tons choisis (et syllabe active), mots placés de la phrase.
   let tones = [];
   let toneSlot = 0;
+  // Pinyin syllabe par syllabe : lettres et ton de chaque case, case active.
+  let spell = [];
+  let spellSlot = 0;
   let tiles = [];
   let built = [];
 
@@ -259,11 +294,19 @@ export async function playView(el, { id }) {
   const answeredCount = () => initialCount - queue.length;
   // Repli : sans syllabes alignées, les tons se donnent en pinyin ; une phrase trop courte pour
   // la remettre dans l'ordre devient une phrase à trous.
+  // Pinyin tapé : syllabe par syllabe (lettres puis ton) si les syllabes sont connues, sauf si
+  // l'élève préfère la saisie libre (« ni3 hao3 »).
   const kind = () => {
     if (card.mode === "tones" && !card.syllables) return "pinyin";
     if (card.mode === "sentence_order" && !card.tiles) return "cloze";
-    return MODES[card.mode].answer;
+    const answer = MODES[card.mode].answer;
+    if (answer === "pinyin" && card.syllables && readPinyinStyle() === "syllables") return "syllables";
+    return answer;
   };
+  const styleSwitch = () => (card.syllables && MODES[card.mode].answer === "pinyin"
+    ? `<button type="button" class="link-button small" id="pinyin-style">${kind() === "syllables"
+      ? "Saisie libre (ni3 hao3)" : "Saisie syllabe par syllabe"}</button>`
+    : "");
   const choiceKind = () => kind() === "choice" || kind() === "cloze";
   const sentenceMode = () => card.mode.startsWith("sentence");
 
@@ -283,7 +326,29 @@ export async function playView(el, { id }) {
               placeholder="ex. ni3 hao3" aria-label="Pinyin">
             <div id="typed-preview" class="typed-preview"></div>
             <small class="muted">Chiffre après chaque syllabe pour le ton (5 ou rien = neutre), v = ü</small>
+            ${styleSwitch()}
           </form>`;
+      case "syllables":
+        return `
+          <div class="spell-slots" id="spell-slots">
+            ${card.syllables.map((s, i) => `
+              <label class="spell-slot" data-slot="${i}">
+                ${card.mode === "hanzi_to_pinyin" ? `<span class="hanzi-sm" lang="zh">${escape(s.hanzi)}</span>` : ""}
+                <span class="spell-result" aria-hidden="true">?</span>
+                <input class="spell-input" data-input="${i}" autocomplete="off" autocapitalize="off"
+                  autocorrect="off" spellcheck="false" enterkeyhint="next" maxlength="8"
+                  aria-label="Syllabe ${i + 1} sur ${card.syllables.length}, sans le ton">
+                <small class="spell-tone">ton ?</small>
+              </label>`).join("")}
+          </div>
+          <div class="tone-buttons">
+            ${TONE_BUTTONS.map((t) => `
+              <button type="button" class="secondary tone-button" data-tone="${t.tone}">
+                ${t.label} <kbd>${t.key}</kbd></button>`).join("")}
+          </div>
+          <small class="muted">Tape les lettres de la syllabe (v = ü), puis touche son ton — ou tape son
+            chiffre : ni3. <kbd>Espace</kbd> syllabe suivante, <kbd>Entrée</kbd> vérifier.</small>
+          ${styleSwitch()}`;
       case "tones":
         return `
           <div class="tone-slots" id="tone-slots"></div>
@@ -420,7 +485,12 @@ export async function playView(el, { id }) {
     if (kind() === "strokes") startWriting();
     el.querySelector("#controls").innerHTML = controlsBefore();
     if (kind() === "tones") startTones();
+    if (kind() === "syllables") startSpelling();
     if (kind() === "order") startOrder();
+    el.querySelector("#pinyin-style")?.addEventListener("click", () => {
+      writePinyinStyle(kind() === "syllables" ? "free" : "syllables");
+      render();
+    });
     el.querySelector("#undo")?.addEventListener("click", undoTile);
 
     el.querySelector("#check")?.addEventListener("click", () => checkTyped());
@@ -524,6 +594,112 @@ export async function playView(el, { id }) {
     else reveal("ko", `✗ Tons attendus : <strong>${expected}</strong>`, 1);
   }
 
+  // --- Pinyin syllabe par syllabe : les lettres dans chaque case, puis le ton (bouton ou chiffre) ---
+  function startSpelling() {
+    spell = card.syllables.map(() => ({ letters: "", tone: null }));
+    const inputs = [...el.querySelectorAll(".spell-input")];
+    const focusSlot = (i) => inputs[Math.max(0, Math.min(inputs.length - 1, i))]?.focus();
+
+    inputs.forEach((input, i) => {
+      input.addEventListener("focus", () => {
+        spellSlot = i;
+        updateSpelling();
+      });
+      input.addEventListener("input", () => {
+        // Un chiffre (ni3) ou un accent (nǐ) donne le ton ; un espace ou un chiffre passe à la
+        // case suivante. Un texte collé (« ni3 hao3 ») se répartit sur les cases.
+        const parts = input.value.split(/(?<=[0-5])|\s+/).map((p) => p.trim()).filter((p) => p);
+        const closed = /[0-5\s]$/.test(input.value);
+        let slot = i;
+        parts.forEach((part, n) => {
+          if (slot >= spell.length) return;
+          const { letters, tone } = splitSyllable(part.replace(/[0-5]/g, ""));
+          const digit = part.match(/[0-5]/);
+          if (letters || n === 0) spell[slot].letters = letters;
+          if (tone) spell[slot].tone = tone;
+          if (digit) spell[slot].tone = Number(digit[0]) % 5;
+          inputs[slot].value = spell[slot].letters.replace(/v/g, "ü");
+          if (n < parts.length - 1) slot += 1;
+        });
+        if (!parts.length) spell[i].letters = "";
+        updateSpelling();
+        if (closed && spell[slot]?.letters) focusSlot(slot + 1);
+        else if (slot !== i) focusSlot(slot);
+      });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (revealed) answer(suggested);
+          else if (i < inputs.length - 1 && !spell.every((s) => s.letters && s.tone !== null)) focusSlot(i + 1);
+          else checkSpelling();
+        } else if (e.key === "Backspace" && !input.value && i > 0) {
+          e.preventDefault();
+          focusSlot(i - 1);
+        } else if (e.key === "ArrowLeft" && input.selectionStart === 0) {
+          focusSlot(i - 1);
+        } else if (e.key === "ArrowRight" && input.selectionEnd === input.value.length) {
+          focusSlot(i + 1);
+        }
+      });
+    });
+
+    el.querySelectorAll("[data-tone]").forEach((button) => {
+      // Le champ garde le focus (le clavier du téléphone reste ouvert).
+      button.addEventListener("pointerdown", (e) => e.preventDefault());
+      button.addEventListener("click", () => {
+        if (revealed) return;
+        spell[spellSlot].tone = Number(button.dataset.tone);
+        updateSpelling();
+        const next = spell.findIndex((s, n) => n > spellSlot && (!s.letters || s.tone === null));
+        focusSlot(next >= 0 ? next : spellSlot);
+      });
+    });
+    spellSlot = 0;
+    focusSlot(0);
+  }
+
+  function updateSpelling(results = null) {
+    el.querySelectorAll(".spell-slot").forEach((slot, i) => {
+      const { letters, tone } = spell[i];
+      const expected = card.syllables[i];
+      slot.classList.toggle("active", !results && i === spellSlot);
+      if (results) slot.classList.add(results[i].letters && results[i].tone ? "ok" : "ko");
+      const shown = letters ? (tone === null ? letters.replace(/v/g, "ü") : withTone(letters, tone)) : "?";
+      slot.querySelector(".spell-result").textContent = results ? withTone(expected.base, expected.tone) : shown;
+      let note = tone === null ? "ton ?" : toneName(tone);
+      if (results && !(results[i].letters && results[i].tone)) note = `et non ${letters ? shown : "rien"}`;
+      else if (results) note = toneName(expected.tone);
+      slot.querySelector(".spell-tone").textContent = note;
+    });
+  }
+
+  function checkSpelling() {
+    if (revealed) return;
+    const missing = spell.findIndex((s) => !s.letters || s.tone === null);
+    if (missing >= 0) {
+      toast(spell[missing].letters
+        ? "Choisis le ton de chaque syllabe (· neutre s'il n'y en a pas)"
+        : "Tape les lettres de chaque syllabe", "error");
+      el.querySelectorAll(".spell-input")[missing]?.focus();
+      return;
+    }
+    const results = card.syllables.map((s, i) => ({ letters: s.base === spell[i].letters, tone: s.tone === spell[i].tone }));
+    el.querySelectorAll(".spell-input").forEach((input) => {
+      input.readOnly = true;
+      input.blur();
+    });
+    el.querySelectorAll("[data-tone]").forEach((b) => (b.disabled = true));
+    updateSpelling(results);
+    const given = escape(spell.map((s) => withTone(s.letters, s.tone)).join(" "));
+    const wrongLetters = results.filter((r) => !r.letters).length;
+    const wrongTones = results.filter((r) => r.letters && !r.tone).length;
+    if (!wrongLetters && !wrongTones) reveal("ok", "✓ Correct", 3);
+    else if (!wrongLetters && wrongTones === 1 && results.length >= 3) {
+      reveal("partial", `≈ Un ton faux — ta réponse : <strong>${given}</strong>`, 2);
+    } else if (!wrongLetters) reveal("partial", `≈ Bonnes syllabes, tons incorrects — ta réponse : <strong>${given}</strong>`, 1);
+    else reveal("ko", `✗ Incorrect — ta réponse : <strong>${given}</strong>`, 1);
+  }
+
   // --- Phrase à remettre dans l'ordre : on clique les mots (ou leur numéro) un par un ---
   function startOrder() {
     const words = card.tiles.map((text, index) => ({ text, index }));
@@ -619,6 +795,7 @@ export async function playView(el, { id }) {
 
   function checkTyped() {
     if (kind() === "tones") return checkTones();
+    if (kind() === "syllables") return checkSpelling();
     if (kind() === "order") return checkOrder();
     const input = el.querySelector("#typed-input");
     if (!input || revealed) return;
@@ -762,6 +939,16 @@ export async function playView(el, { id }) {
       } else if (e.key === "Enter") {
         e.preventDefault();
         checkTones();
+      }
+    } else if (!revealed && kind() === "syllables") {
+      // Focus hors des cases (après un clic ailleurs) : les chiffres donnent encore le ton.
+      const tone = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 0, 0: 0 }[e.key];
+      if (tone !== undefined) {
+        spell[spellSlot].tone = tone;
+        updateSpelling();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        checkSpelling();
       }
     } else if (!revealed && kind() === "order") {
       if (/^[1-9]$/.test(e.key)) {

@@ -636,3 +636,20 @@ mark.miss { background: color-mix(in srgb, var(--again) 25%, transparent); color
 .reading-unknown { margin-top: 1rem; }
 .rd-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0; }
 .rd-chip { cursor: pointer; font-size: 1.05rem; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); }
+
+/* Pinyin syllabe par syllabe */
+.spell-slots { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin: 1rem 0 .75rem; }
+.spell-slot {
+  display: flex; flex-direction: column; align-items: center; gap: .25rem; width: 6.2rem; padding: .5rem .4rem;
+  border: 2px solid var(--border); border-radius: 10px; background: var(--surface); cursor: text;
+}
+.spell-slot.active { border-color: var(--accent); }
+.spell-slot.ok { border-color: var(--good); }
+.spell-slot.ko { border-color: var(--again); }
+.spell-result { font-size: 1.45rem; min-height: 1.8rem; color: var(--accent); }
+.spell-slot.ok .spell-result { color: var(--good); }
+.spell-input {
+  width: 100%; text-align: center; font-size: 1.1rem; padding: .3rem .2rem; text-transform: lowercase;
+}
+.spell-tone { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+.spell-slot.ko .spell-tone { color: var(--again); }
