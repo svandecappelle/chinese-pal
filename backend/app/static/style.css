@@ -242,16 +242,19 @@ kbd { font-family: inherit; font-size: .75em; opacity: .8; border: 1px solid cur
 
 /* Ordre des traits */
 .strokes { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; margin: .5rem 0; }
+/* Croix 田 de repère : deux traits d'un pixel (un dégradé pouvait disparaître selon la taille). */
 .stroke-box {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
-  background-image:
-    linear-gradient(to right, transparent calc(50% - .5px), var(--border) 50%, transparent calc(50% + .5px)),
-    linear-gradient(to bottom, transparent calc(50% - .5px), var(--border) 50%, transparent calc(50% + .5px));
+  border: 1px solid var(--border); border-radius: 6px;
+  background:
+    linear-gradient(var(--border), var(--border)) center / 1px 100% no-repeat,
+    linear-gradient(var(--border), var(--border)) center / 100% 1px no-repeat,
+    var(--surface);
 }
 .stroke-boxes { display: contents; }
 .stroke-boxes[hidden] { display: none; }
 /* Tracé : une grande case, le doigt dessine sans faire défiler la page */
-.stroke-quiz { display: flex; flex-direction: column; align-items: center; gap: .5rem; width: 100%; }
+/* La grande case peut être plus large que la carte sur téléphone : elle déborde des deux côtés. */
+.stroke-quiz { display: flex; flex-direction: column; align-items: center; gap: .5rem; width: 100%; overflow: visible; }
 .stroke-quiz-box { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .stroke-progress { display: flex; gap: .35rem; justify-content: center; }
 .stroke-progress span {

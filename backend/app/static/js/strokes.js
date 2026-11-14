@@ -1,4 +1,4 @@
-// Ordre des traits avec Hanzi Writer (chargé dans index.html, données des caractères via CDN).
+// Ordre des traits avec Hanzi Writer (chargé dans index.html, tracés servis par l'app).
 
 const HANZI = /[一-鿿]/;
 
@@ -34,13 +34,21 @@ function writerOptions(size, outline) {
 // Doigt sur écran tactile : moins précis qu'une souris, on accepte des traits plus approximatifs.
 const COARSE = window.matchMedia?.("(pointer: coarse)").matches;
 
-// Grande case pour tracer : toute la largeur disponible, sans dépasser la moitié de l'écran en hauteur.
+// Grande case pour tracer. Téléphone : presque toute la largeur de l'écran (la case déborde des
+// marges de la carte) ; ordinateur : jusqu'à 480 px. Jamais plus de 62 % de la hauteur visible
+// (téléphone tenu en paysage).
+const PHONE_WIDTH = 640;
+
 function quizSize(container) {
+  const phone = window.innerWidth < PHONE_WIDTH;
   // La case des traits peut être resserrée sur son contenu : on prend la largeur d'un parent.
   let block = container;
   while (block.parentElement && block.clientWidth < 260) block = block.parentElement;
-  const width = Math.min(block.clientWidth || window.innerWidth, window.innerWidth) - 16;
-  return Math.round(Math.max(180, Math.min(width, 340, window.innerHeight * 0.55)));
+  // Dans une boîte de dialogue (fiche d'un mot), la case reste dans la boîte.
+  const dialog = container.closest("dialog");
+  const width = dialog ? Math.min(dialog.clientWidth - 48, 480)
+    : phone ? window.innerWidth - 20 : Math.min((block.clientWidth || window.innerWidth) - 16, 480);
+  return Math.round(Math.max(200, Math.min(width, window.innerHeight * 0.62)));
 }
 
 function quizOptions(size, outline) {
@@ -90,11 +98,14 @@ export function mountStrokes(container, text, size = 110, { outline = true } = {
   let stage = null;
   let current = null;
   let session = 0;
+  let onResize = null;
 
   function closeStage() {
     session += 1;
     current?.cancelQuiz();
     current = null;
+    if (onResize) window.removeEventListener("resize", onResize);
+    onResize = null;
     stage?.remove();
     stage = null;
     boxes.hidden = false;
@@ -110,7 +121,6 @@ export function mountStrokes(container, text, size = 110, { outline = true } = {
     quiz(onDone) {
       closeStage();
       const mine = session;
-      const big = quizSize(container);
       boxes.hidden = true;
       stage = document.createElement("div");
       stage.className = "stroke-quiz";
@@ -121,6 +131,19 @@ export function mountStrokes(container, text, size = 110, { outline = true } = {
       const progress = [...stage.querySelectorAll(".stroke-progress span")];
       const box = stage.querySelector(".stroke-quiz-box");
       let mistakes = 0;
+      let big = quizSize(container);
+      // Sur téléphone, la case entière à l'écran pour tracer sans faire défiler.
+      if (window.innerWidth < PHONE_WIDTH) {
+        requestAnimationFrame(() => box.scrollIntoView({ block: "center", behavior: "smooth" }));
+      }
+      // Rotation de l'écran ou fenêtre redimensionnée : la case suit, le tracé en cours reste.
+      onResize = () => {
+        const size = quizSize(container);
+        if (Math.abs(size - big) < 12 || !current) return;
+        big = size;
+        current.updateDimensions({ width: size, height: size, padding: Math.round(size * 0.06) });
+      };
+      window.addEventListener("resize", onResize);
 
       const run = (i) => {
         if (mine !== session) return;
