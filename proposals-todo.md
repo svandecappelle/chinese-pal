@@ -2,7 +2,9 @@
 
 Propositions restantes, classées par public. Déjà faits : dictée (écoute), exercices sur les
 phrases d'exemple, entraînement aux tons, statistiques personnelles, lecture assistée, mode
-hors ligne (PWA), fil de révision par petits pas, Mes mots et notes personnelles (mots hors vocabulaire compris), textes gradués.
+hors ligne (PWA), fil de révision par petits pas, Mes mots et notes personnelles (mots hors
+vocabulaire compris, que le professeur peut ajouter au vocabulaire), textes gradués
+(modifiables et masquables par les professeurs).
 
 ## Priorités
 
@@ -14,8 +16,6 @@ hors ligne (PWA), fil de révision par petits pas, Mes mots et notes personnelle
 
 ## Élèves
 
-- **Mes mots, suite** : proposer au professeur les mots personnels de ses élèves (les plus gardés)
-  pour les ajouter au vocabulaire commun.
 - **Textes gradués, suite** : plus de textes fournis (HSK 4 et au-delà), « lu » enregistré sur le
   compte plutôt que sur l'appareil, audio du texte entier, textes réservés à un groupe.
 - **Petits dialogues audio** avec des questions de compréhension : écouter des phrases entières,

@@ -162,6 +162,12 @@ utile quand la vérification souple du sens se trompe.
   `POST /api/my-words`) : visible de lui seul, hors du vocabulaire commun et des exercices des
   autres ; il en corrige le sens sur sa fiche, le retirer de Mes mots le supprime, et il disparaît
   avec son compte. S'il existe déjà dans le vocabulaire commun, c'est ce mot-là qui est gardé.
+  Sur la page **Vocabulaire**, le bouton « 👥 Mots des élèves » (éditeurs du vocabulaire) liste
+  les mots gardés ainsi, les plus gardés d'abord, avec les sens donnés (`GET /api/student-words`).
+  « Ajouter au vocabulaire » en fait un mot commun, dans une liste au choix
+  (`POST /api/student-words/adopt`) : les mots personnels y sont fondus, et chaque élève garde
+  sa place dans Mes mots, sa progression et sa note. Un mot ajouté autrement au vocabulaire est
+  fondu de la même façon.
 - Le « jour » est calculé en UTC.
 
 ## Prononciation, ordre des traits, exemples

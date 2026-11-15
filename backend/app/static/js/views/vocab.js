@@ -4,6 +4,7 @@ import { attachKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
 import { can } from "../session.js";
 import { bindPager, paginate, pagerHtml, remember, save, toast, withBusy } from "../ui.js";
+import { renderStudentWords } from "./student-words.js";
 import { openWordDialog } from "./word-dialog.js";
 
 const STATE_KEY = "chinese.vocab";
@@ -23,10 +24,16 @@ export async function vocabView(el) {
     <div class="toolbar">
       <h2>Vocabulaire <span id="total" class="muted small"></span></h2>
       <div class="actions" ${editor ? "" : "hidden"}>
+        <button type="button" class="secondary" data-toggle="student-panel" id="student-button" hidden>👥 Mots des élèves</button>
         <button type="button" class="secondary" data-toggle="packs-panel">📦 Listes prêtes</button>
         <button type="button" data-toggle="add-panel">+ Ajouter un mot</button>
       </div>
     </div>
+
+    <details id="student-panel" class="panel" hidden>
+      <summary>Mots gardés par les élèves</summary>
+      <div id="student-words"></div>
+    </details>
 
     <details id="packs-panel" class="panel" ${editor ? "" : "hidden"}>
       <summary>Listes prêtes à importer</summary>
@@ -152,6 +159,19 @@ export async function vocabView(el) {
     updateSheetsLink();
     renderPacks(packs);
     renderWords();
+    if (editor) loadStudentWords();
+  }
+
+  // Mots gardés par les élèves hors vocabulaire : bouton et panneau affichés s'il y en a.
+  async function loadStudentWords() {
+    try {
+      const count = await renderStudentWords(el.querySelector("#student-words"), decks, load);
+      const button = el.querySelector("#student-button");
+      button.hidden = el.querySelector("#student-panel").hidden = count === 0;
+      button.textContent = `👥 Mots des élèves (${count})`;
+    } catch {
+      // Non bloquant : la page du vocabulaire reste utilisable.
+    }
   }
 
   el.querySelectorAll("[data-toggle]").forEach((b) =>

@@ -155,6 +155,12 @@ def create_word(word: WordIn, _: VocabEditor):
                 params,
             ).fetchone()
             created["deck_ids"] = []
+            # Des élèves l'avaient gardé comme mot personnel : fondus dans le mot commun.
+            personal = [r["id"] for r in conn.execute(
+                "SELECT id FROM words WHERE hanzi = %s AND pinyin = %s AND owner_id IS NOT NULL",
+                (created["hanzi"], created["pinyin"]))]
+            if personal:
+                merge_personal(conn, personal, created["id"])
             if word.deck_id is not None:
                 conn.execute(
                     "INSERT INTO deck_words (deck_id, word_id) VALUES (%s, %s)",
@@ -235,6 +241,87 @@ def delete_word(word_id: int, _: VocabEditor):
     with pool.connection() as conn:
         if conn.execute("DELETE FROM words WHERE id = %s AND owner_id IS NULL", (word_id,)).rowcount == 0:
             raise HTTPException(404, "Mot introuvable")
+
+
+# Mots des élèves : les mots personnels (gardés dans Mes mots hors vocabulaire), regroupés par
+# caractères et pinyin, les plus gardés d'abord. L'éditeur en fait des mots du vocabulaire commun ;
+# les mots personnels correspondants y sont fondus (Mes mots, progression et notes conservées).
+
+@router.get("/student-words")
+def student_words(_: VocabEditor):
+    """Mots gardés par les élèves hors vocabulaire : combien d'élèves, et les sens qu'ils ont
+    donnés (le plus fréquent d'abord). `shared_id` : le mot existe déjà dans le vocabulaire."""
+    with pool.connection() as conn:
+        return conn.execute(
+            """WITH p AS (
+                   SELECT hanzi, pinyin, translation, owner_id, created_at FROM words
+                   WHERE owner_id IS NOT NULL),
+               senses AS (
+                   SELECT hanzi, pinyin, translation, count(*) AS n FROM p
+                   GROUP BY hanzi, pinyin, translation)
+               SELECT p.hanzi, p.pinyin, count(DISTINCT p.owner_id) AS students,
+                      max(p.created_at) AS last_added,
+                      (SELECT array_agg(s.translation ORDER BY s.n DESC, s.translation) FROM senses s
+                       WHERE s.hanzi = p.hanzi AND s.pinyin = p.pinyin) AS translations,
+                      (SELECT w.id FROM words w WHERE w.hanzi = p.hanzi AND w.pinyin = p.pinyin
+                       AND w.owner_id IS NULL) AS shared_id
+               FROM p GROUP BY p.hanzi, p.pinyin
+               ORDER BY students DESC, last_added DESC LIMIT 200""").fetchall()
+
+
+class AdoptIn(BaseModel):
+    hanzi: str = Field(min_length=1, max_length=8)
+    pinyin: str = Field(min_length=1, max_length=60)
+    translation: str = Field(min_length=1, max_length=200)
+    deck_id: int | None = None
+
+
+def merge_personal(conn, personal_ids: list[int], shared_id: int) -> None:
+    """Remplace des mots personnels par le mot commun : Mes mots, progression, historique et
+    notes passent au mot commun (s'ils y existaient déjà, ceux du mot commun sont gardés)."""
+    conn.execute(
+        """INSERT INTO exercise_words (exercise_id, word_id, added_at)
+           SELECT exercise_id, %s, min(added_at) FROM exercise_words WHERE word_id = ANY(%s)
+           GROUP BY exercise_id ON CONFLICT DO NOTHING""", (shared_id, personal_ids))
+    conn.execute(
+        """UPDATE review_states rs SET word_id = %(shared)s WHERE word_id = ANY(%(ids)s)
+           AND NOT EXISTS (SELECT 1 FROM review_states x WHERE x.user_id = rs.user_id
+                           AND x.word_id = %(shared)s AND x.mode = rs.mode)""",
+        {"shared": shared_id, "ids": personal_ids})
+    conn.execute("UPDATE review_log SET word_id = %s WHERE word_id = ANY(%s)", (shared_id, personal_ids))
+    conn.execute(
+        """UPDATE word_notes n SET word_id = %(shared)s WHERE word_id = ANY(%(ids)s)
+           AND NOT EXISTS (SELECT 1 FROM word_notes x WHERE x.user_id = n.user_id AND x.word_id = %(shared)s)""",
+        {"shared": shared_id, "ids": personal_ids})
+    conn.execute("DELETE FROM words WHERE id = ANY(%s)", (personal_ids,))
+
+
+@router.post("/student-words/adopt")
+def adopt_student_word(data: AdoptIn, _: VocabEditor):
+    """Ajoute au vocabulaire commun un mot gardé par des élèves (ou reprend le mot commun s'il
+    existe déjà), puis y fond leurs mots personnels."""
+    hanzi, pinyin = data.hanzi.strip(), data.pinyin.strip()
+    try:
+        with pool.connection() as conn:
+            personal = [r["id"] for r in conn.execute(
+                "SELECT id FROM words WHERE hanzi = %s AND pinyin = %s AND owner_id IS NOT NULL",
+                (hanzi, pinyin))]
+            word = conn.execute(
+                "SELECT id, hanzi, pinyin, translation FROM words WHERE hanzi = %s AND pinyin = %s AND owner_id IS NULL",
+                (hanzi, pinyin)).fetchone()
+            if word is None:
+                word = conn.execute(
+                    """INSERT INTO words (hanzi, pinyin, translation, classifiers) VALUES (%s, %s, %s, %s)
+                       RETURNING id, hanzi, pinyin, translation""",
+                    (hanzi, pinyin, data.translation.strip(), dictionary_classifiers(hanzi))).fetchone()
+            if data.deck_id is not None:
+                conn.execute("INSERT INTO deck_words (deck_id, word_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                             (data.deck_id, word["id"]))
+            if personal:
+                merge_personal(conn, personal, word["id"])
+    except ForeignKeyViolation:
+        raise HTTPException(400, "Liste inconnue")
+    return word | {"merged": len(personal)}
 
 
 @router.get("/packs")
