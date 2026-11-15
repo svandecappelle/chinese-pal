@@ -2,12 +2,12 @@ import { api, escape } from "../api.js";
 import { bindSpeakButtons, speakButton, stopSpeaking } from "../audio.js";
 import { attachKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
-import { can } from "../session.js";
+import { can, session } from "../session.js";
 import { mountStrokes } from "../strokes.js";
 import { toast } from "../ui.js";
 
 // Fiche d'un mot dans une boîte de dialogue : prononciation, ordre des traits, exemples.
-// `onChange` est appelé après l'ajout ou la suppression d'un exemple.
+// `onChange` est appelé après un changement (exemple, classificateur, Mes mots, note).
 export async function openWordDialog(wordId, deckNames, onChange) {
   const word = await api(`/words/${wordId}`);
   const editor = can("manage_vocab");
@@ -26,6 +26,14 @@ export async function openWordDialog(wordId, deckNames, onChange) {
     <p class="tags center">
       ${word.deck_ids.map((id) => `<span class="tag">${escape(deckNames[id] ?? "")}</span>`).join("")}
     </p>
+    ${session.user ? `
+    <section class="my-word" aria-label="Mes mots">
+      <div class="center"><button type="button" id="my-toggle" class="secondary small-button" disabled>Mes mots…</button></div>
+      <label>Ma note <small class="muted">(moyen mnémotechnique, visible de toi seul, montré avec la réponse)</small>
+        <textarea id="my-note" rows="2" maxlength="500" placeholder="ex. 好 : une femme 女 et son enfant 子"></textarea>
+      </label>
+      <div><button type="button" id="my-note-save" class="secondary small-button">Enregistrer la note</button></div>
+    </section>` : ""}
 
     <h3>Classificateur <small class="muted">量词</small></h3>
     <div id="measure" class="measure"></div>
@@ -56,6 +64,7 @@ export async function openWordDialog(wordId, deckNames, onChange) {
     </form>`;
 
   bindSpeakButtons(dialog);
+  if (session.user) bindMyWord(dialog, wordId, word.hanzi, onChange);
   const strokes = mountStrokes(dialog.querySelector("#dialog-strokes"), word.hanzi);
   dialog.querySelector("#animate").addEventListener("click", () => strokes.animate());
   dialog.querySelector("#quiz").addEventListener("click", () => {
@@ -146,4 +155,57 @@ export async function openWordDialog(wordId, deckNames, onChange) {
     if (e.target === dialog) dialog.close();
   });
   dialog.showModal();
+}
+
+// Mes mots : garder le mot dans sa liste personnelle (révisée comme un exercice) et y noter son
+// moyen mnémotechnique.
+async function bindMyWord(dialog, wordId, hanzi, onChange) {
+  const toggle = dialog.querySelector("#my-toggle");
+  const note = dialog.querySelector("#my-note");
+  let mine;
+  try {
+    mine = await api(`/my-words/${wordId}`);
+  } catch {
+    dialog.querySelector(".my-word").hidden = true;
+    return;
+  }
+  const render = () => {
+    toggle.disabled = false;
+    toggle.textContent = mine.in_list ? "✓ Dans Mes mots · retirer" : "＋ Ajouter à Mes mots";
+    toggle.setAttribute("aria-pressed", String(mine.in_list));
+  };
+  note.value = mine.note || "";
+  render();
+  toggle.addEventListener("click", async () => {
+    toggle.disabled = true;
+    try {
+      await toggleMyWord(wordId, hanzi, mine.in_list);
+      mine.in_list = !mine.in_list;
+      onChange?.();
+    } catch (err) {
+      toast(`Erreur : ${err.message}`, "error");
+    }
+    render();
+  });
+  dialog.querySelector("#my-note-save").addEventListener("click", async () => {
+    try {
+      const saved = await api(`/my-words/${wordId}/note`, { method: "PUT", body: { note: note.value } });
+      note.value = saved.note || "";
+      toast(saved.note ? "Note enregistrée" : "Note supprimée", "success");
+      onChange?.();
+    } catch (err) {
+      toast(`Erreur : ${err.message}`, "error");
+    }
+  });
+}
+
+/** Ajoute ou retire un mot de Mes mots (avec un message). */
+export async function toggleMyWord(wordId, hanzi, inList) {
+  if (inList) {
+    await api(`/my-words/${wordId}`, { method: "DELETE" });
+    toast(`${hanzi} retiré de Mes mots.`);
+  } else {
+    await api(`/my-words/${wordId}`, { method: "PUT" });
+    toast(`${hanzi} ajouté à Mes mots : il entre dans tes pas du fil.`, "success");
+  }
 }

@@ -2,20 +2,36 @@
 
 Propositions restantes, classées par public. Déjà faits : dictée (écoute), exercices sur les
 phrases d'exemple, entraînement aux tons, statistiques personnelles, lecture assistée, mode
-hors ligne (PWA), fil de révision par petits pas.
+hors ligne (PWA), fil de révision par petits pas, Mes mots et notes personnelles.
+
+## Priorités
+
+- **Rappel quotidien** : notification le soir (application installée, application Android) quand
+  les pas du jour ne sont pas faits (« 2 petits pas t'attendent, 4 min »).
+- **Prononciation à l'oral** : l'élève lit le mot à voix haute ; la reconnaissance vocale du
+  navigateur (chinois) vérifie les syllabes et les tons.
+- **Devoirs datés et suivi de classe** : voir Professeurs.
 
 ## Élèves
 
+- **Mes mots, suite** : garder aussi un mot absent du vocabulaire (aujourd'hui seuls les mots du
+  vocabulaire se gardent ; les autres demandent un professeur).
+- **Textes gradués** : de courts textes écrits avec les mots déjà vus, les mots nouveaux surlignés
+  (suite de la lecture assistée et de la progression).
+- **Petits dialogues audio** avec des questions de compréhension : écouter des phrases entières,
+  pas seulement des mots.
+- **Décomposition des caractères** : clés, composants, caractères qui partagent un composant.
+- **Mini-jeux** : memory caractère ↔ pinyin, contre-la-montre sur les tons.
 - **Lecture assistée, suite** : reconnaître les noms propres (小明 est découpé 小 / 明) ; traduire
   en français les sens de CC-CEDICT (aujourd'hui en anglais hors vocabulaire).
-
-- **Fil de révision, suite** : rappel quotidien (notification de l'appli) quand les pas du jour
-  ne sont pas faits ; dans le suivi du professeur, la régularité de chaque élève (pas par jour).
+- **Fil de révision, suite** : dans le suivi du professeur, la régularité de chaque élève (pas
+  par jour).
 
 ## Professeurs
 
-- **Suivi plus fin** : mots qui posent problème à toute la classe, export CSV de la progression.
 - **Devoirs datés** : un exercice à finir avant une date, qui l'a fait, qui est en retard.
+- **Suivi plus fin** : régularité de chaque élève (pas du fil par jour), mots qui posent problème
+  à toute la classe, export CSV de la progression.
 - **Import de listes personnelles** : CSV ou collage « hanzi ; traduction », pinyin et
   classificateurs remplis par le dictionnaire, aperçu avant import.
 - **Fiches imprimables de quiz** : en plus des fiches d'écriture, des quiz papier (sens → caractère,
@@ -25,9 +41,10 @@ hors ligne (PWA), fil de révision par petits pas.
 
 - **HSK 4 à 6 et HSK 3.0**, et d'autres listes thématiques : école, maison, émotions, achats,
   restaurant, voyage.
-- **Décomposition des caractères** : clés, composants, caractères qui partagent un composant.
 
 ## Technique
 
+- **Tests automatisés dans le dépôt** : tests de l'API (pytest, base jetable) lancés à chaque
+  push, au lieu de scripts d'essai ponctuels.
 - **Hors ligne, suite** : préparer d'avance un exercice pour le hors ligne (tracés et audio de tous
   ses mots) ; noter la date réelle des réponses données hors ligne.

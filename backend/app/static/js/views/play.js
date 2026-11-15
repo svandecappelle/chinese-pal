@@ -483,6 +483,7 @@ export async function playView(el, { id, query }) {
               ${card.classifiers.length > 1 ? `<span class="muted small">· aussi
                 ${card.classifiers.slice(1).map((c) => escape(c.hanzi)).join("、")}</span>` : ""}
             </div>` : ""}
+          ${card.note ? `<p class="word-note"><span class="muted small">Ma note</span> ${escape(card.note)}</p>` : ""}
           ${example ? `
             <div class="example">
               <div>${escape(example.hanzi)} ${speakButton(example.hanzi, { label: "Écouter la phrase" })}</div>

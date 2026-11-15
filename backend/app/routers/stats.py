@@ -127,7 +127,7 @@ def difficult_words(user: dict | None = Depends(auth.visitor)):
                                             "limit": DIFFICULT_LIMIT}).fetchall()
         return {
             "exercise": {"id": None, "name": "Mes mots les plus ratés"},
-            "words": study_words(conn, rows),
+            "words": study_words(conn, rows, user),
         }
 
 

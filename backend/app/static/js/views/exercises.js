@@ -42,6 +42,7 @@ export async function exercisesView(el) {
 
 // Pour qui est l'exercice : auteur et destinataires (vu par ceux qui peuvent le modifier).
 function audience(ex) {
+  if (ex.personal) return '<p class="muted small">Ta liste personnelle · <a href="#/mes-mots">gérer Mes mots</a></p>';
   if (!ex.can_edit) {
     return ex.owner_username ? `<p class="muted small">Par ${escape(ex.owner_name || ex.owner_username)}</p>` : "";
   }

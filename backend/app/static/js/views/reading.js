@@ -2,12 +2,13 @@ import { api, escape } from "../api.js";
 import { bindSpeakButtons, speakButton } from "../audio.js";
 import { attachKeyboard, close as closeKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
-import { can } from "../session.js";
+import { can, session } from "../session.js";
 import { toast } from "../ui.js";
-import { openWordDialog } from "./word-dialog.js";
+import { openWordDialog, toggleMyWord } from "./word-dialog.js";
 
 // Lecture assistée : un texte chinois découpé en mots (dictionnaire), le pinyin au-dessus, et
-// le sens d'un mot en le touchant. Les mots absents du vocabulaire peuvent y être ajoutés.
+// le sens d'un mot en le touchant. Les mots absents du vocabulaire peuvent y être ajoutés ; ceux
+// du vocabulaire, gardés dans Mes mots (compte connecté).
 
 const SETTINGS_KEY = "chinese.reading";
 const SAMPLE = "我叫小明，是一名大学生。每天早上七点起床，先喝一杯咖啡，然后坐地铁去学校。"
@@ -36,6 +37,11 @@ const pinyinOf = (info) => info?.pinyin || (info?.reading ? numbersToMarks(info.
 export async function readingView(el) {
   const settings = readSettings();
   const editor = can("manage_vocab");
+  // Mots du vocabulaire déjà gardés dans Mes mots.
+  const mine = new Set();
+  if (session.user) {
+    api("/my-words").then((data) => data.words.forEach((w) => mine.add(w.word_id))).catch(() => {});
+  }
   let result = null;
   let selected = null;
 
@@ -110,7 +116,9 @@ export async function readingView(el) {
       ${info.word_id ? `
         <p>${escape(info.translation)}</p>
         <p class="small"><span class="tag">✓ dans le vocabulaire</span>
-          <button type="button" class="link-button" id="rd-open">fiche du mot</button></p>` : `
+          <button type="button" class="link-button" id="rd-open">fiche du mot</button></p>
+        ${session.user ? `<button type="button" class="secondary small-button" id="rd-mine"
+          aria-pressed="${mine.has(info.word_id)}">${mine.has(info.word_id) ? "✓ Dans Mes mots · retirer" : "＋ Mes mots"}</button>` : ""}` : `
         ${info.english ? `<p>${escape(info.english)} <small class="muted">(CC-CEDICT, en anglais)</small></p>`
           : '<p class="muted">Absent du dictionnaire : lu caractère par caractère.</p>'}
         ${editor ? `
@@ -123,6 +131,17 @@ export async function readingView(el) {
       renderText();
     });
     box.querySelector("#rd-open")?.addEventListener("click", () => openWordDialog(info.word_id, {}, () => {}));
+    box.querySelector("#rd-mine")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      try {
+        await toggleMyWord(info.word_id, selected, mine.has(info.word_id));
+        if (mine.has(info.word_id)) mine.delete(info.word_id);
+        else mine.add(info.word_id);
+      } catch (err) {
+        toast(`Erreur : ${err.message}`, "error");
+      }
+      renderDetail();
+    });
     box.querySelector("#rd-add")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const button = e.target.querySelector("button");

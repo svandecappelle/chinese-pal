@@ -8,6 +8,7 @@ import { exercisesView } from "./views/exercises.js";
 import { feedView } from "./views/feed.js";
 import { editorView } from "./views/editor.js";
 import { loginView } from "./views/login.js";
+import { myWordsView } from "./views/my-words.js";
 import { playView } from "./views/play.js";
 import { progressView } from "./views/progress.js";
 import { readingView } from "./views/reading.js";
@@ -23,6 +24,8 @@ const routes = [
   [/^\/$/, exercisesView, "exercises", null],
   // Fil de révision : les petits pas du jour et ce qui a été fait.
   [/^\/fil$/, feedView, "feed", "user"],
+  // Mes mots : mots gardés depuis la lecture ou la fiche d'un mot, et notes personnelles.
+  [/^\/mes-mots$/, myWordsView, "feed", "user"],
   [/^\/connexion$/, loginView, "", null],
   [/^\/compte$/, accountView, "account", "user"],
   [/^\/administration$/, adminView, "admin", "manage_users"],

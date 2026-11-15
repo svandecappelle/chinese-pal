@@ -172,7 +172,8 @@ def delete_user(user_id: int, me: dict = Depends(auth.require("manage_users"))):
         user = fetch_user(conn, user_id)
         if user["is_admin"] and not me["is_admin"]:
             raise HTTPException(403, "Seul un administrateur peut supprimer un administrateur")
-        # Sa progression part avec lui ; ses cours restent, sans auteur.
+        # Sa progression et son exercice « Mes mots » partent avec lui ; ses cours restent, sans auteur.
+        conn.execute("DELETE FROM exercises WHERE owner_id = %s AND personal", (user_id,))
         conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
         ensure_an_admin_remains(conn)
 

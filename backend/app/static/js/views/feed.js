@@ -201,12 +201,13 @@ function progressHtml(data) {
       <h3>Ma progression</h3>
       <div class="progress-line"><strong>${plural(seen, "mot vu", "mots vus")}</strong>
         <span class="muted">${plural(mastered, "maîtrisé", "maîtrisés")}</span></div>
-      <div class="progress-bar"><span style="width: ${seen ? Math.round((mastered / seen) * 100) : 0}%"></span></div>
+      <div class="mastery-bar"><span style="width: ${seen ? Math.round((mastered / seen) * 100) : 0}%"></span></div>
       <div class="progress-tiles">
         <div><strong>${percent(p.success_month)}</strong><span class="muted small">justes sur 30 jours</span></div>
         <div><strong>${p.days_active || 0}</strong><span class="muted small">jours actifs</span></div>
       </div>
       <a href="#/statistiques" class="small">Voir mes statistiques</a>
+      <a href="#/mes-mots" class="small">${data.my_words ? `Mes mots (${data.my_words})` : "Mes mots : garde les mots qui t'intéressent"}</a>
     </section>`;
 }
 

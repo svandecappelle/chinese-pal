@@ -151,6 +151,12 @@ utile quand la vérification souple du sens se trompe.
   du jour), la progression, et **le fil** des 7 derniers jours : séances (réponses, justes, une
   barre par réponse), objectif atteint, mots découverts et maîtrisés, série de jours, nouveaux
   exercices attribués, et ce qui revient demain ([feed.py](backend/app/routers/feed.py)).
+- **Mes mots** (lien depuis Mon fil, page `#/mes-mots`) : dans la lecture assistée, un mot du
+  vocabulaire se garde d'un clic (« ＋ Mes mots »), comme depuis sa fiche. Les mots gardés forment
+  un exercice personnel, créé au premier mot ([mywords.py](backend/app/routers/mywords.py)) : il
+  se révise, se teste et s'imprime comme les autres, le fil le reprend, et il n'est modifiable
+  que par sa liste (ni éditeur, ni administrateur). Sur la fiche d'un mot, **Ma note** garde son
+  moyen mnémotechnique (visible de soi seul), montré avec la réponse en test et en révision.
 - Le « jour » est calculé en UTC.
 
 ## Prononciation, ordre des traits, exemples

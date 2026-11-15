@@ -122,7 +122,7 @@ export async function studyView(el, { id }) {
     const w = words[index];
     const focus = FOCUS[settings.focus];
     // Partie cachée tant qu'on ne l'a pas dévoilée (clic, Espace ou →).
-    const hidden = focus.hide.filter((part) => part !== "measure" || w.measure).filter((part) => part !== "example" || w.example);
+    const hidden = focus.hide.filter((part) => part !== "measure" || w.measure).filter((part) => part !== "example" || w.example || w.note);
     revealed = !hidden.length;
     const part = (name, html) => (html ? `<div class="study-part ${hidden.includes(name) ? "concealed" : ""}"
       data-part="${name}" ${hidden.includes(name) ? 'title="Clique pour dévoiler"' : ""}>${html}</div>` : "");
@@ -156,12 +156,13 @@ export async function studyView(el, { id }) {
           ${w.classifiers.length > 1 ? `<span class="muted small">· aussi
             ${w.classifiers.slice(1).map((c) => escape(c.hanzi)).join("、")}</span>` : ""}
         </div>` : "")}
-      ${part("example", w.example ? `
+      ${part("example", !w.note && !w.example ? "" : `${w.note ? `<p class="word-note"><span class="muted small">Ma note</span> ${escape(w.note)}</p>` : ""}
+        ${w.example ? `
         <div class="example">
           <div>${escape(w.example.hanzi)} ${speakButton(w.example.hanzi, { label: "Écouter la phrase" })}</div>
           <div class="muted">${escape(w.example.pinyin)}</div>
           <div>${escape(w.example.translation)}</div>
-        </div>` : "")}`;
+        </div>` : ""}`)}`;
     card.querySelector("[data-strokes]").addEventListener("click", showStrokes);
     card.querySelectorAll(".concealed").forEach((p) => p.addEventListener("click", reveal, { once: true }));
     card.querySelector("[data-practice]")?.addEventListener("click", startPractice);

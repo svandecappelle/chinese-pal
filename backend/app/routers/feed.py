@@ -231,6 +231,9 @@ def get_feed(user: dict = Depends(auth.current_user)):
             (user["id"], today_start + timedelta(days=1), today_start + timedelta(days=2)),
         ).fetchone()["n"]
         events = feed_events(conn, user, today_start - timedelta(days=FEED_DAYS - 1), pace, stats)
+        my_words = conn.execute(
+            """SELECT count(*) AS n FROM exercise_words ew JOIN exercises e ON e.id = ew.exercise_id
+               WHERE e.owner_id = %s AND e.personal""", (user["id"],)).fetchone()["n"]
 
     answers_by_day = {d["day"]: d["answers"] for d in stats.get("calendar", [])}
     week = []
@@ -251,6 +254,7 @@ def get_feed(user: dict = Depends(auth.current_user)):
         "progress": {k: stats.get(k) for k in ("words_seen", "words_mastered", "success_month",
                                                "days_active", "answers")},
         "events": events,
+        "my_words": my_words,
     }
 
 

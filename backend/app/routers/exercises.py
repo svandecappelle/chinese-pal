@@ -128,7 +128,7 @@ def exercise_stats(conn, exercise: dict, user_id: int) -> dict:
 
 # Cours avec leur auteur, leurs groupes, et ce que l'utilisateur %(user_id)s peut en faire :
 # `assigned` (il le révise : public, ou pour un compte : auteur, groupe visé, tous les comptes),
-# `can_edit`. Un invité ou un visiteur (%(account)s faux) ne voit que les exercices publics.
+# `can_edit` (jamais pour l'exercice personnel « Mes mots », géré par sa liste). Un invité ou un visiteur (%(account)s faux) ne voit que les exercices publics.
 EXERCISES_SQL = """
 SELECT e.*, u.display_name AS owner_name, u.username AS owner_username,
        COALESCE((SELECT array_agg(group_id ORDER BY group_id)
@@ -136,7 +136,7 @@ SELECT e.*, u.display_name AS owner_name, u.username AS owner_username,
        (e.public OR (%(account)s AND (e.owner_id = %(user_id)s OR e.everyone OR EXISTS (
             SELECT 1 FROM exercise_groups eg JOIN user_groups ug ON ug.group_id = eg.group_id
             WHERE eg.exercise_id = e.id AND ug.user_id = %(user_id)s)))) AS assigned,
-       (%(is_admin)s OR (%(can_create)s AND e.owner_id = %(user_id)s)) AS can_edit
+       (NOT e.personal AND (%(is_admin)s OR (%(can_create)s AND e.owner_id = %(user_id)s))) AS can_edit
 FROM exercises e LEFT JOIN users u ON u.id = e.owner_id
 """
 
@@ -210,7 +210,7 @@ def list_exercises(user: dict | None = Depends(auth.visitor)):
     with pool.connection() as conn:
         exercises = conn.execute(
             f"SELECT * FROM ({EXERCISES_SQL}) e WHERE assigned OR can_edit "
-            "ORDER BY assigned DESC, all_words DESC, name",
+            "ORDER BY assigned DESC, personal DESC, all_words DESC, name",
             user_params(user),
         ).fetchall()
         for exercise in exercises:
@@ -344,9 +344,11 @@ def get_session(exercise_id: int, modes: str | None = None,
                                                  UNION ALL (SELECT hanzi, classifiers FROM words
                                                             ORDER BY random() LIMIT 60)""", params):
                 pool_words.setdefault(r["hanzi"], r["classifiers"])
+        notes = word_notes(conn, user, [c["word_id"] for c in cards])
     payloads = []
     for c in cards:
         payload = card_payload(c)
+        payload["note"] = notes.get(c["word_id"])
         example = payload["example"] = examples.get(c["word_id"])
         if c["mode"] in SENTENCE_MODES and example:
             if c["mode"] == "sentence_order":
@@ -368,10 +370,21 @@ def get_words(exercise_id: int, user: dict | None = Depends(auth.visitor)):
                            FROM cards ORDER BY word_id""",
             {"exercise_id": exercise_id, "user_id": None},
         ).fetchall()
-        return {"exercise": exercise, "words": study_words(conn, words)}
+        return {"exercise": exercise, "words": study_words(conn, words, user)}
 
 
-def study_words(conn, words: list[dict]) -> list[dict]:
+def word_notes(conn, user: dict | None, word_ids: list[int]) -> dict[int, str]:
+    """Notes personnelles (moyen mnémotechnique) d'un compte sur ces mots."""
+    if not user or user["is_guest"] or not word_ids:
+        return {}
+    return {
+        r["word_id"]: r["note"] for r in conn.execute(
+            "SELECT word_id, note FROM word_notes WHERE user_id = %s AND word_id = ANY(%s)",
+            (user["id"], word_ids))
+    }
+
+
+def study_words(conn, words: list[dict], user: dict | None = None) -> list[dict]:
     """Mots pour le mode révision (word_id, hanzi, pinyin, translation, classifiers) avec leur
     classificateur décrit et une phrase d'exemple ; sert aussi aux mots ratés (statistiques)."""
     examples = {
@@ -381,9 +394,11 @@ def study_words(conn, words: list[dict]) -> list[dict]:
             ([w["word_id"] for w in words],),
         )
     }
+    notes = word_notes(conn, user, [w["word_id"] for w in words])
     return [
         {
             "word_id": w["word_id"],
+            "note": notes.get(w["word_id"]),
             "hanzi": w["hanzi"],
             "pinyin": w["pinyin"],
             "translation": w["translation"],

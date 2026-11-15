@@ -770,8 +770,8 @@ mark.miss { background: color-mix(in srgb, var(--again) 25%, transparent); color
 .word-card-pinyin { font-weight: 600; }
 
 .progress-line { display: flex; justify-content: space-between; font-size: .9rem; }
-.progress-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
-.progress-bar span { display: block; height: 100%; background: var(--good); }
+.mastery-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+.mastery-bar span { display: block; height: 100%; background: var(--good); }
 .progress-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
 .progress-tiles div { padding: .6rem .7rem; background: var(--surface-2); border-radius: 10px; display: flex; flex-direction: column; }
 .progress-tiles strong { font-size: 1.3rem; }
@@ -782,3 +782,26 @@ mark.miss { background: color-mix(in srgb, var(--again) 25%, transparent); color
   background: var(--surface); color: var(--fg); font-weight: normal;
 }
 .pace-choices .pace.active { border: 2px solid var(--accent); color: var(--accent-hover); font-weight: 700; }
+
+/* Mes mots : liste personnelle et notes (moyen mnémotechnique). */
+.word-note {
+  margin: .4rem 0 0; padding: .4rem .7rem; border-radius: 8px; font-size: .9rem;
+  background: color-mix(in srgb, var(--hard) 12%, var(--surface)); color: var(--fg);
+}
+.word-note .muted { margin-right: .35rem; }
+.my-word { display: flex; flex-direction: column; gap: .5rem; margin: .75rem 0; }
+.my-word textarea { resize: vertical; font: inherit; }
+.my-words { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.my-word-row {
+  display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+}
+.my-word-main {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: .9rem; text-align: left;
+  background: none; border: 0; padding: .25rem 0; color: inherit; font: inherit; cursor: pointer;
+}
+.my-word-main:hover { background: none; }
+.my-word-hanzi { font-size: 1.9rem; line-height: 1.1; font-family: "Noto Serif SC", "Noto Sans SC", serif; flex: none; }
+.my-word-text { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.my-word-text .word-note { margin: 0; align-self: flex-start; }
+.feed-progress a { min-height: 32px; display: inline-flex; align-items: center; }
