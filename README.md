@@ -81,6 +81,27 @@ Sécurité : mots de passe hachés avec scrypt, session dans un cookie `HttpOnly
 15 minutes. Changer son mot de passe déconnecte ses autres appareils ; désactiver un compte le
 déconnecte aussitôt et garde sa progression.
 
+## Tests
+
+Les tests de l'API sont dans `backend/tests/` (pytest). L'application tourne dans le processus
+de test (`TestClient`) sur une base jetable, `chinese_test`, supprimée puis recréée à chaque
+lancement sur le PostgreSQL de compose : migrations, administrateur de test, listes HSK 1 à 3.
+Les données de l'application ne sont pas touchées.
+
+```bash
+make test                      # tous les tests
+make test ARGS="-k texts -x"   # options de pytest
+```
+
+Sans `make` : `docker compose build app`, `docker compose --profile test build test`, puis
+`docker compose --profile test run --rm test`. Le code de l'app et des tests est monté dans le
+conteneur : après une modification, inutile de reconstruire (sauf nouvelle dépendance). Sur
+GitHub, les mêmes tests tournent à chaque push et pull request
+([.github/workflows/tests.yml](.github/workflows/tests.yml)).
+
+Chaque test crée ses propres comptes (fixture `make_user`, supprimés à la fin) et exercices ;
+la fixture `sql` agit directement sur la base (par exemple reculer des réponses d'un jour).
+
 ## Base de données
 
 Les migrations sont des fichiers SQL dans `backend/app/migrations/` (`NNN_description.sql`).
@@ -304,9 +325,13 @@ Sources et licence : [backend/app/data/README.md](backend/app/data/README.md).
 compose.yaml
 Makefile           commandes (make install, make upgrade, make backup…)
 deploy/            installation serveur : scripts, modèles nginx
+.github/workflows/ tests à chaque push (GitHub Actions)
 backend/
   Dockerfile
+  Dockerfile.test    image des tests : l'image de l'app avec pytest
   requirements.txt
+  requirements-dev.txt dépendances des tests
+  tests/             tests de l'API (pytest, base jetable)
   app/
     main.py          création de l'app, service du frontend
     auth.py          comptes : mots de passe, sessions, droits, premier administrateur

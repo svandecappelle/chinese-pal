@@ -44,5 +44,23 @@ services:
       db:
         condition: service_healthy
 
+  # Tests de l'API (make test) : base jetable « chinese_test » sur le même PostgreSQL, recréée à
+  # chaque lancement ; les données de l'application ne sont pas touchées. Le code est monté :
+  # pas besoin de reconstruire l'image après une modification de l'app ou des tests.
+  test:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    image: localhost/chinese-app-test:latest
+    environment:
+      TEST_DATABASE_URL: postgresql://${POSTGRES_USER:-chinese}:${POSTGRES_PASSWORD:-chinese}@db:5432/chinese_test
+    volumes:
+      - ./backend/app:/srv/app:ro,z
+      - ./backend/tests:/srv/tests:ro,z
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   pgdata:

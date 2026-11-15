@@ -9,7 +9,7 @@ APP_PORT := $(shell grep -E '^APP_PORT=' .env 2>/dev/null | cut -d= -f2)
 APP_PORT := $(or $(APP_PORT),8000)
 
 .DEFAULT_GOAL := help
-.PHONY: help install upgrade up down restart logs ps build health backup restore shell-db password apk
+.PHONY: help install upgrade up down restart logs ps build health test backup restore shell-db password apk
 
 help: ## Affiche cette aide
 	@echo "汉语 · Révision de vocabulaire chinois"
@@ -50,6 +50,11 @@ ps: ## Conteneurs en cours et leurs ports
 
 build: ## Reconstruit l'image
 	$(COMPOSE) build
+
+test: ## Lance les tests de l'API (base jetable chinese_test ; ARGS=... pour pytest, ex. ARGS="-k texts")
+	$(COMPOSE) build app
+	$(COMPOSE) --profile test build test
+	$(COMPOSE) --profile test run --rm test pytest -p no:cacheprovider tests $(ARGS)
 
 health: ## Vérifie que l'application répond
 	@curl -sf http://127.0.0.1:$(APP_PORT)/api/health && echo "" || (echo "L'application ne répond pas : make logs" && exit 1)

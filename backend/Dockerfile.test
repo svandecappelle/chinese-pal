@@ -1,0 +1,16 @@
+# Image des tests (make test, CI) : l'image de l'application, avec pytest. Le code de l'app et
+# les tests sont montés par compose (service « test ») : pas besoin de reconstruire à chaque essai.
+FROM localhost/chinese-app:latest
+
+USER root
+COPY requirements-dev.txt .
+RUN pip install --no-cache-dir -r requirements-dev.txt
+COPY tests ./tests
+USER appuser
+
+ENV PYTHONPATH=/srv \
+    TEST_DATABASE_URL=postgresql://chinese:chinese@db:5432/chinese_test \
+    ADMIN_USERNAME=admin \
+    ADMIN_PASSWORD=admin-de-test
+
+CMD ["pytest", "-p", "no:cacheprovider", "tests"]
