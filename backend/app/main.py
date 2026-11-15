@@ -14,7 +14,7 @@ from .config import settings
 from .db import pool, run_migrations, wait_for_db
 from . import auth, ime
 from . import tts as speech
-from .routers import account, admin, exercises, feed, ime as ime_router, mywords, reviews, stats, tts, vocab
+from .routers import account, admin, exercises, feed, ime as ime_router, mywords, reviews, stats, texts, tts, vocab
 
 logging.basicConfig(level=logging.INFO)
 
@@ -46,6 +46,7 @@ app.include_router(reviews.router)
 app.include_router(stats.router)
 app.include_router(feed.router)
 app.include_router(mywords.router)
+app.include_router(texts.router)
 app.include_router(tts.router)
 app.include_router(ime_router.router)
 

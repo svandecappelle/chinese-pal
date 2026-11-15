@@ -805,3 +805,29 @@ mark.miss { background: color-mix(in srgb, var(--again) 25%, transparent); color
 .my-word-text { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
 .my-word-text .word-note { margin: 0; align-self: flex-start; }
 .feed-progress a { min-height: 32px; display: inline-flex; align-items: center; }
+
+/* Textes gradués : cartes des textes (part de mots connus) et mots nouveaux surlignés. */
+.graded-texts { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1rem; }
+.graded-texts h3 { margin: 0; font-size: 1.05rem; }
+.text-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .6rem; }
+.text-card {
+  display: flex; flex-direction: column; gap: .3rem; padding: .75rem .85rem; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--fg); text-decoration: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.text-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.text-card.fits { border-color: color-mix(in srgb, var(--good) 55%, var(--border)); }
+.text-card-tags { display: flex; flex-wrap: wrap; gap: .3rem; margin: 0; }
+.tag.fit { background: color-mix(in srgb, var(--good) 15%, var(--surface)); color: var(--good); font-weight: 600; }
+.tag.done { background: var(--surface-2); color: var(--muted); }
+.text-card-title { font-size: 1.35rem; font-family: "Noto Serif SC", "Noto Sans SC", serif; }
+.text-known { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; margin-top: .2rem; }
+.text-known span { display: block; height: 100%; background: var(--good); }
+.text-head h2 { margin: .2rem 0; }
+.text-head h2 small { font-size: .95rem; font-weight: normal; }
+.text-translation { margin-bottom: .75rem; }
+.text-translation summary { cursor: pointer; font-weight: 600; }
+.text-translation p { margin: .5rem 0 0; }
+.text-options { margin-bottom: .5rem; }
+.reading.mark-fresh .rd-word.fresh { background: color-mix(in srgb, var(--hard) 20%, transparent); }
+.reading.mark-fresh .rd-word.fresh.selected { background: color-mix(in srgb, var(--accent) 22%, transparent); }

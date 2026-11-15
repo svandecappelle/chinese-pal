@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1, "level": 1, "title": "我的家", "title_fr": "Ma famille",
+    "text": "我叫小明。我家有四口人：爸爸、妈妈、姐姐和我。爸爸是医生，妈妈是老师。姐姐在大学学习汉语。我很爱我的家。",
+    "translation": "Je m'appelle Xiaoming. Ma famille compte quatre personnes : papa, maman, ma grande sœur et moi. Papa est médecin, maman est professeure. Ma sœur étudie le chinois à l'université. J'aime beaucoup ma famille."
+  },
+  {
+    "id": 2, "level": 1, "title": "在饭店", "title_fr": "Au restaurant",
+    "text": "今天中午，我和朋友去饭店吃饭。我想吃米饭，朋友想吃面条。我们还喝了茶。饭店的菜很好吃，也不贵。",
+    "translation": "Ce midi, je suis allé au restaurant avec un ami. Je voulais du riz, mon ami voulait des nouilles. Nous avons aussi bu du thé. Les plats du restaurant étaient très bons, et pas chers."
+  },
+  {
+    "id": 3, "level": 1, "title": "星期天", "title_fr": "Dimanche",
+    "text": "星期天天气很好。上午我在家看书，下午去商店买东西。我买了一些水果和一本书。晚上我给妈妈打电话。",
+    "translation": "Dimanche, il faisait très beau. Le matin, j'ai lu à la maison ; l'après-midi, je suis allé faire des courses au magasin. J'ai acheté des fruits et un livre. Le soir, j'ai téléphoné à maman."
+  },
+  {
+    "id": 4, "level": 1, "title": "我的小猫", "title_fr": "Mon chaton",
+    "text": "我有一只小猫，它很漂亮。小猫喜欢睡觉，也喜欢吃鱼。我回家的时候，它在门口等我。",
+    "translation": "J'ai un chaton, il est très joli. Il aime dormir, et il aime aussi manger du poisson. Quand je rentre à la maison, il m'attend à la porte."
+  },
+  {
+    "id": 5, "level": 2, "title": "去北京旅游", "title_fr": "Voyage à Pékin",
+    "text": "去年夏天，我和家人坐飞机去北京旅游。北京很大，人也很多。我们去了很多地方，还吃了北京烤鸭。虽然天气很热，但是我们都觉得很快乐。",
+    "translation": "L'été dernier, je suis allé visiter Pékin en avion avec ma famille. Pékin est très grand, et il y a beaucoup de monde. Nous sommes allés dans beaucoup d'endroits, et nous avons aussi mangé du canard laqué. Même s'il faisait très chaud, nous étions tous très heureux."
+  },
+  {
+    "id": 6, "level": 2, "title": "早上跑步", "title_fr": "Courir le matin",
+    "text": "我每天早上六点起床，然后去公园跑步。跑步对身体很好。公园里有很多人，有的人跑步，有的人唱歌跳舞。跑完步以后，我回家洗澡、吃早饭，再去上班。",
+    "translation": "Je me lève chaque matin à six heures, puis je vais courir au parc. Courir est très bon pour la santé. Il y a beaucoup de monde au parc : certains courent, d'autres chantent et dansent. Après avoir couru, je rentre me doucher et prendre mon petit-déjeuner, puis je vais au travail."
+  },
+  {
+    "id": 7, "level": 2, "title": "妹妹的生日", "title_fr": "L'anniversaire de ma petite sœur",
+    "text": "明天是我妹妹的生日，她十岁了。我想送她一件新衣服。今天下午我去商店，找了很长时间，最后买了一件红色的。我希望她会喜欢。",
+    "translation": "Demain, c'est l'anniversaire de ma petite sœur : elle aura dix ans. Je veux lui offrir un nouveau vêtement. Cet après-midi, je suis allé au magasin, j'ai cherché longtemps, et finalement j'en ai acheté un rouge. J'espère qu'il lui plaira."
+  },
+  {
+    "id": 8, "level": 2, "title": "生病了", "title_fr": "Malade",
+    "text": "昨天我觉得身体不舒服，所以没去上课。妈妈带我去医院。医生说我感冒了，要多喝水、多休息。今天我好多了，明天可以去学校了。",
+    "translation": "Hier, je ne me sentais pas bien, alors je ne suis pas allé en cours. Maman m'a emmené à l'hôpital. Le médecin a dit que j'avais un rhume et qu'il fallait boire beaucoup d'eau et bien me reposer. Aujourd'hui je vais beaucoup mieux : demain, je pourrai retourner à l'école."
+  },
+  {
+    "id": 9, "level": 3, "title": "搬家", "title_fr": "Le déménagement",
+    "text": "上个月我搬家了。新家离公司很近，走路只要二十分钟，所以我不用每天坐地铁了。房子虽然不大，但是很干净，窗户外面还有一棵大树。周末我请了几个朋友来我家做饭，大家都说我的新家很不错。",
+    "translation": "Le mois dernier, j'ai déménagé. Mon nouveau logement est tout près du bureau, à vingt minutes à pied seulement : je n'ai plus besoin de prendre le métro tous les jours. L'appartement n'est pas grand, mais il est très propre, et il y a même un grand arbre devant la fenêtre. Ce week-end, j'ai invité quelques amis à cuisiner chez moi, et tout le monde a trouvé mon nouveau chez-moi très bien."
+  },
+  {
+    "id": 10, "level": 3, "title": "学汉语", "title_fr": "Apprendre le chinois",
+    "text": "我学汉语已经两年了。刚开始的时候，我觉得汉字特别难，声调也总是说错。后来老师让我每天读一段课文，还要写日记。慢慢地，我发现自己越来越习惯了。现在我可以用汉语和中国朋友聊天，真高兴！",
+    "translation": "J'apprends le chinois depuis deux ans déjà. Au début, je trouvais les caractères très difficiles, et je me trompais toujours de ton. Ensuite, le professeur m'a demandé de lire un passage du manuel chaque jour et de tenir un journal. Petit à petit, je me suis rendu compte que je m'y habituais de plus en plus. Maintenant, je peux discuter en chinois avec des amis chinois : quel bonheur !"
+  },
+  {
+    "id": 11, "level": 3, "title": "周末的计划", "title_fr": "Les projets du week-end",
+    "text": "这个周末会下雨，所以我只好改变了计划。本来我打算和同事一起去爬山，现在只能在家里了。不过我一点儿也不生气：我可以复习功课、打扫房间，晚上再看一个好电影。有时候，在家休息也很舒服。",
+    "translation": "Il va pleuvoir ce week-end, alors j'ai dû changer mes projets. Au départ, je comptais faire une randonnée en montagne avec des collègues ; maintenant, je ne peux que rester à la maison. Mais ça ne me contrarie pas du tout : je peux réviser mes cours, ranger ma chambre, et le soir regarder un bon film. Parfois, se reposer à la maison, c'est aussi très agréable."
+  },
+  {
+    "id": 12, "level": 3, "title": "老公园", "title_fr": "Le vieux parc",
+    "text": "我的城市有一个很老的公园。公园中间有一个小湖，湖边有很多花草。每年春天花开了，很多人来这里照相。老人们喜欢在这儿下棋，孩子们在草地上玩儿。我最喜欢坐在湖边，看看书，听听鸟叫。",
+    "translation": "Ma ville a un très vieux parc. Au milieu, il y a un petit lac entouré de fleurs et de plantes. Chaque printemps, quand les fleurs s'ouvrent, beaucoup de gens viennent y prendre des photos. Les personnes âgées aiment y jouer aux échecs, et les enfants jouent sur la pelouse. Ce que je préfère, c'est m'asseoir au bord du lac, lire un peu et écouter les oiseaux."
+  }
+]

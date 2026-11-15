@@ -8,14 +8,15 @@ import { openWordDialog, toggleMyWord } from "./word-dialog.js";
 
 // Lecture assistée : un texte chinois découpé en mots (dictionnaire), le pinyin au-dessus, et
 // le sens d'un mot en le touchant. Les mots absents du vocabulaire peuvent y être ajoutés ; ceux
-// du vocabulaire, gardés dans Mes mots (compte connecté).
+// du vocabulaire, gardés dans Mes mots (compte connecté). Avec une progression, les mots du
+// vocabulaire pas encore révisés sont surlignés. Textes gradués : #/lecture?texte=3.
 
 const SETTINGS_KEY = "chinese.reading";
 const SAMPLE = "我叫小明，是一名大学生。每天早上七点起床，先喝一杯咖啡，然后坐地铁去学校。"
   + "周末我常常和朋友一起去公园散步，有时候也去看电影。";
 
 function readSettings() {
-  const defaults = { text: "", pinyin: true, unknown: true };
+  const defaults = { text: "", pinyin: true, unknown: true, fresh: true };
   try {
     return { ...defaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}") };
   } catch {
@@ -34,8 +35,63 @@ function writeSettings(settings) {
 // Pinyin affiché d'un mot : celui du vocabulaire, sinon la lecture du dictionnaire.
 const pinyinOf = (info) => info?.pinyin || (info?.reading ? numbersToMarks(info.reading).replace(/ /g, "") : "");
 
-export async function readingView(el) {
+// Textes gradués déjà lus (dans ce navigateur).
+const READ_KEY = "chinese.textsRead";
+
+function readTexts() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(READ_KEY) ?? "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function markRead(id, read) {
+  const done = readTexts();
+  if (read) done.add(id);
+  else done.delete(id);
+  try {
+    localStorage.setItem(READ_KEY, JSON.stringify([...done]));
+  } catch {
+    // Stockage indisponible : la marque ne sera pas gardée.
+  }
+}
+
+const plural = (n, word, words = `${word}s`) => `${n} ${n > 1 ? words : word}`;
+
+function textCard(t, done) {
+  const known = t.known === null ? null : Math.round(t.known * 100);
+  return `
+    <a class="text-card${t.fits ? " fits" : ""}" href="#/lecture?texte=${t.id}">
+      <span class="text-card-tags"><span class="tag">HSK ${t.level}</span>
+        ${t.fits ? '<span class="tag fit">À ta mesure</span>' : ""}
+        ${done.has(t.id) ? '<span class="tag done">✓ Lu</span>' : ""}</span>
+      <span class="text-card-title" lang="zh">${escape(t.title)}</span>
+      <span class="muted small">${escape(t.title_fr)}</span>
+      ${known === null ? `<span class="muted small">${plural(t.words, "mot")} · ${t.length} caractères</span>` : `
+        <span class="text-known" aria-label="${known} % de mots connus"><span style="width: ${known}%"></span></span>
+        <span class="muted small">${known} % de mots connus${t.new_words.length ? ` · ${plural(t.new_words.length, "nouveau", "nouveaux")}` : ""}</span>`}
+    </a>`;
+}
+
+async function gradedTexts(box) {
+  try {
+    const data = await api("/texts");
+    const done = readTexts();
+    box.innerHTML = `
+      <div class="feed-card-head"><h3>Textes gradués</h3>
+        <span class="muted small">${data.progress ? "« À ta mesure » : surtout des mots que tu as déjà vus" : "Du HSK 1 au HSK 3"}</span></div>
+      <div class="text-cards">${data.texts.map((t) => textCard(t, done)).join("")}</div>`;
+  } catch {
+    box.remove();
+  }
+}
+
+export async function readingView(el, { query } = {}) {
   const settings = readSettings();
+  const textId = Number(query?.get("texte")) || null;
+  const graded = textId ? await api(`/texts/${textId}`) : null;
+  const progress = Boolean(session.user || session.guest);
   const editor = can("manage_vocab");
   // Mots du vocabulaire déjà gardés dans Mes mots.
   const mine = new Set();
@@ -46,20 +102,45 @@ export async function readingView(el) {
   let selected = null;
 
   el.innerHTML = `
+    ${graded ? `
+      <p class="small"><a href="#/lecture">← Tous les textes</a></p>
+      <div class="toolbar text-head">
+        <div>
+          <p class="text-card-tags"><span class="tag">HSK ${graded.level}</span></p>
+          <h2 lang="zh">${escape(graded.title)} <small class="muted">${escape(graded.title_fr)}</small></h2>
+          <p class="muted small">${graded.known === null
+            ? `${plural(graded.words, "mot")}`
+            : `${Math.round(graded.known * 100)} % de mots connus${graded.new_words.length
+              ? ` · ${plural(graded.new_words.length, "mot nouveau", "mots nouveaux")}, surlignés` : ""}`}</p>
+        </div>
+        <div class="actions">
+          ${session.user && graded.new_word_ids.length ? `<button type="button" class="secondary small-button" id="keep-new">＋ Garder les ${plural(graded.new_word_ids.length, "mot nouveau", "mots nouveaux")}</button>` : ""}
+          <button type="button" class="secondary small-button" id="mark-read" aria-pressed="false"></button>
+        </div>
+      </div>
+      <details class="card-box text-translation"><summary>Traduction</summary><p>${escape(graded.translation)}</p></details>` : `
     <h2>Lecture assistée</h2>
-    <p class="muted">Colle ou tape un texte en chinois : chaque mot est repéré dans le dictionnaire,
-      avec son pinyin. Touche un mot pour voir son sens.</p>
-    <div class="card-box reading-input">
+    <section class="card-box graded-texts" id="graded"><p class="muted">Chargement des textes…</p></section>
+    <p class="muted">Ou colle et tape ton propre texte en chinois : chaque mot est repéré dans le
+      dictionnaire, avec son pinyin. Touche un mot pour voir son sens.</p>`}
+    <div class="card-box reading-input" ${graded ? "hidden" : ""}>
       <textarea id="reading-text" rows="4" lang="zh" placeholder="Texte en chinois…"
-        aria-label="Texte en chinois">${escape(settings.text)}</textarea>
+        aria-label="Texte en chinois">${escape(graded ? graded.text : settings.text)}</textarea>
       <div class="reading-options">
         <label class="check small"><input type="checkbox" id="opt-pinyin" ${settings.pinyin ? "checked" : ""}> Pinyin au-dessus</label>
         <label class="check small"><input type="checkbox" id="opt-unknown" ${settings.unknown ? "checked" : ""}> Souligner les mots hors vocabulaire</label>
+        ${progress ? `<label class="check small"><input type="checkbox" id="opt-fresh" ${settings.fresh ? "checked" : ""}> Surligner mes mots nouveaux</label>` : ""}
         <button type="button" class="secondary small-button" id="sample">Texte d'exemple</button>
         <button type="button" id="read">Lire le texte</button>
       </div>
     </div>
+    ${graded ? `<div class="reading-options text-options">
+      <label class="check small"><input type="checkbox" id="opt-pinyin-2" ${settings.pinyin ? "checked" : ""}> Pinyin au-dessus</label>
+      ${progress ? `<label class="check small"><input type="checkbox" id="opt-fresh-2" ${settings.fresh ? "checked" : ""}> Surligner mes mots nouveaux</label>` : ""}
+    </div>` : ""}
     <div id="reading-out"></div>`;
+  if (!graded) gradedTexts(el.querySelector("#graded"));
+  if (graded) bindGraded();
 
   bindSpeakButtons(el);
   const textarea = el.querySelector("#reading-text");
@@ -72,7 +153,8 @@ export async function readingView(el) {
     for (const t of result.tokens) {
       if (t.word) {
         const info = result.words[t.text];
-        const cls = `rd-word${info?.word_id ? "" : " unknown"}${t.text === selected ? " selected" : ""}`;
+        const fresh = info?.word_id && info.seen === false;
+        const cls = `rd-word${info?.word_id ? "" : " unknown"}${fresh ? " fresh" : ""}${t.text === selected ? " selected" : ""}`;
         parts.push(`<button type="button" class="${cls}" data-word="${escape(t.text)}"><ruby>${escape(t.text)}<rt>${escape(pinyinOf(info))}</rt></ruby></button>`);
         continue;
       }
@@ -88,7 +170,7 @@ export async function readingView(el) {
     if (!result) return;
     const unknown = Object.entries(result.words).filter(([, w]) => !w.word_id).map(([h]) => h);
     out.innerHTML = `
-      <div class="card-box reading${settings.pinyin ? "" : " no-pinyin"}${settings.unknown ? " mark-unknown" : ""}" lang="zh">
+      <div class="card-box reading${settings.pinyin ? "" : " no-pinyin"}${settings.unknown ? " mark-unknown" : ""}${settings.fresh ? " mark-fresh" : ""}" lang="zh">
         ${textHtml()}
       </div>
       <div id="rd-detail" class="rd-detail card-box" ${selected ? "" : "hidden"}></div>
@@ -164,8 +246,11 @@ export async function readingView(el) {
 
   async function read() {
     const text = textarea.value.trim();
-    settings.text = textarea.value;
-    writeSettings(settings);
+    // Un texte gradué ne remplace pas le texte de l'élève.
+    if (!graded) {
+      settings.text = textarea.value;
+      writeSettings(settings);
+    }
     closeKeyboard();
     if (!text) {
       out.innerHTML = "";
@@ -189,8 +274,9 @@ export async function readingView(el) {
     textarea.value = SAMPLE;
     read();
   });
-  for (const [id, key] of [["#opt-pinyin", "pinyin"], ["#opt-unknown", "unknown"]]) {
-    el.querySelector(id).addEventListener("change", (e) => {
+  for (const [id, key] of [["#opt-pinyin", "pinyin"], ["#opt-unknown", "unknown"], ["#opt-fresh", "fresh"],
+    ["#opt-pinyin-2", "pinyin"], ["#opt-fresh-2", "fresh"]]) {
+    el.querySelector(id)?.addEventListener("change", (e) => {
       settings[key] = e.target.checked;
       writeSettings(settings);
       renderText();
@@ -203,6 +289,35 @@ export async function readingView(el) {
     renderText();
   });
 
-  if (settings.text.trim()) read();
+  if (textarea.value.trim()) read();
   return () => closeKeyboard();
+
+  function bindGraded() {
+    const button = el.querySelector("#mark-read");
+    const render = () => {
+      const done = readTexts().has(graded.id);
+      button.textContent = done ? "✓ Lu" : "J'ai lu ce texte";
+      button.setAttribute("aria-pressed", String(done));
+    };
+    render();
+    button.addEventListener("click", () => {
+      markRead(graded.id, !readTexts().has(graded.id));
+      render();
+    });
+    el.querySelector("#keep-new")?.addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      try {
+        for (const id of graded.new_word_ids) {
+          await api(`/my-words/${id}`, { method: "PUT" });
+          mine.add(id);
+        }
+        toast(`${plural(graded.new_word_ids.length, "mot gardé", "mots gardés")} dans Mes mots : ils entrent dans tes pas du fil.`, "success");
+        e.target.textContent = "✓ Gardés dans Mes mots";
+        if (selected) renderDetail();
+      } catch (err) {
+        toast(`Erreur : ${err.message}`, "error");
+        e.target.disabled = false;
+      }
+    });
+  }
 }

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from .. import drills
+from .. import auth, drills
 from ..db import pool
 from ..ime import dictionary, normalize
 
@@ -50,11 +50,12 @@ class ReadingIn(BaseModel):
 
 
 @router.post("/lecture")
-def assisted_reading(data: ReadingIn):
+def assisted_reading(data: ReadingIn, user: dict | None = Depends(auth.visitor)):
     """Lecture assistée : le texte découpé en mots, avec pour chacun le pinyin et le sens.
 
     Le sens vient du vocabulaire (en français) s'il contient le mot, sinon de CC-CEDICT (en
-    anglais). Un mot inconnu du dictionnaire est lu caractère par caractère."""
+    anglais). Un mot inconnu du dictionnaire est lu caractère par caractère. Avec une progression
+    (compte ou invité), `seen` dit si un mot du vocabulaire a déjà été révisé."""
     try:
         tokens = drills.reading_tokens(data.text)
     except FileNotFoundError as err:
@@ -67,6 +68,9 @@ def assisted_reading(data: ReadingIn):
             (list(hanzi),),
         ):
             known.setdefault(row["hanzi"], row)
+        seen = None if user is None else {r["word_id"] for r in conn.execute(
+            "SELECT DISTINCT word_id FROM review_states WHERE user_id = %s AND word_id = ANY(%s)",
+            (user["id"], [row["id"] for row in known.values()]))}
     words = {}
     for word in hanzi:
         row = known.get(word)
@@ -80,6 +84,7 @@ def assisted_reading(data: ReadingIn):
             "reading": reading,
             "translation": row["translation"] if row else None,
             "english": dictionary.definition_of(word),
+            "seen": None if seen is None or row is None else row["id"] in seen,
         }
     return {
         "tokens": [{"text": text, "word": is_word} for text, is_word in tokens],
