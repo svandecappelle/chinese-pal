@@ -31,6 +31,7 @@ async def lifespan(app: FastAPI):
     run_migrations()
     pool.open()
     auth.bootstrap_admin()
+    texts.seed_texts()
     speech.preload()
     ime.preload()
     yield

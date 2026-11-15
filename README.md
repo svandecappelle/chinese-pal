@@ -197,13 +197,18 @@ utile quand la vérification souple du sens se trompe.
   anglais). Les mots hors vocabulaire sont soulignés et listés ; avec le droit de gérer le
   vocabulaire, on les y ajoute en donnant leur sens en français. Les noms propres (小明) sont
   découpés caractère par caractère.
-- **Textes gradués** (en tête de l'onglet **Lecture**) : douze courts textes écrits pour
-  l'application (HSK 1 à 3, [textes.json](backend/app/data/textes.json), `GET /api/texts`).
+- **Textes gradués** (en tête de l'onglet **Lecture**) : de courts textes par niveau HSK
+  (douze fournis, HSK 1 à 3 : [textes.json](backend/app/data/textes.json) ; `GET /api/texts`).
   Chaque carte donne la part de mots déjà révisés par l'élève (en occurrences ; un mot composé
   absent du vocabulaire compte comme ses morceaux, 吃饭 = 吃 + 饭) ; un texte est « à ta mesure »
   entre 75 % et 99 % de mots connus, et ces textes viennent en premier. Le texte s'ouvre dans la
   lecture assistée (`#/lecture?texte=ID`), mots nouveaux surlignés, traduction repliée ; un
   bouton garde les mots nouveaux dans Mes mots, un autre marque le texte comme lu (sur l'appareil).
+  Les textes sont en base (`graded_texts`) : ceux de `textes.json` y sont chargés au démarrage,
+  sans écraser les modifications. Les professeurs et administrateurs (droit « créer des
+  exercices ») les **modifient**, en **écrivent de nouveaux** (« ＋ Nouveau texte ») et les
+  **masquent** aux élèves : un texte masqué n'est plus listé ni lisible que par eux (`PUT
+  /api/texts/{id}`, `PUT /api/texts/{id}/hidden`).
 - **Exemples** : une phrase par mot HSK (avec pinyin et traduction), affichée avec la réponse.
   On peut en ajouter ou en supprimer depuis la fiche d'un mot (clic sur une ligne du vocabulaire).
 

@@ -4,6 +4,7 @@ import { attachKeyboard, close as closeKeyboard } from "../keyboard.js";
 import { numbersToMarks } from "../pinyin.js";
 import { can, session } from "../session.js";
 import { toast } from "../ui.js";
+import { openTextEditor, setTextHidden } from "./text-editor.js";
 import { openWordDialog, toggleMyWord } from "./word-dialog.js";
 
 // Lecture assistée : un texte chinois découpé en mots (dictionnaire), le pinyin au-dessus, et
@@ -59,11 +60,12 @@ function markRead(id, read) {
 
 const plural = (n, word, words = `${word}s`) => `${n} ${n > 1 ? words : word}`;
 
-function textCard(t, done) {
+function textCard(t, done, editor) {
   const known = t.known === null ? null : Math.round(t.known * 100);
-  return `
-    <a class="text-card${t.fits ? " fits" : ""}" href="#/lecture?texte=${t.id}">
+  const card = `
+    <a class="text-card${t.fits ? " fits" : ""}${t.hidden ? " is-hidden" : ""}" href="#/lecture?texte=${t.id}">
       <span class="text-card-tags"><span class="tag">HSK ${t.level}</span>
+        ${t.hidden ? '<span class="tag hidden-tag">Masqué</span>' : ""}
         ${t.fits ? '<span class="tag fit">À ta mesure</span>' : ""}
         ${done.has(t.id) ? '<span class="tag done">✓ Lu</span>' : ""}</span>
       <span class="text-card-title" lang="zh">${escape(t.title)}</span>
@@ -72,19 +74,54 @@ function textCard(t, done) {
         <span class="text-known" aria-label="${known} % de mots connus"><span style="width: ${known}%"></span></span>
         <span class="muted small">${known} % de mots connus${t.new_words.length ? ` · ${plural(t.new_words.length, "nouveau", "nouveaux")}` : ""}</span>`}
     </a>`;
+  if (!editor) return card;
+  return `
+    <div class="text-card-wrap">
+      ${card}
+      <div class="text-card-tools">
+        <button type="button" class="link-button small" data-edit="${t.id}">✎ Modifier</button>
+        <button type="button" class="link-button small" data-hide="${t.id}" data-hidden="${t.hidden}">${t.hidden ? "Afficher" : "Masquer"}</button>
+      </div>
+    </div>`;
 }
 
 async function gradedTexts(box) {
+  let data;
   try {
-    const data = await api("/texts");
-    const done = readTexts();
-    box.innerHTML = `
-      <div class="feed-card-head"><h3>Textes gradués</h3>
-        <span class="muted small">${data.progress ? "« À ta mesure » : surtout des mots que tu as déjà vus" : "Du HSK 1 au HSK 3"}</span></div>
-      <div class="text-cards">${data.texts.map((t) => textCard(t, done)).join("")}</div>`;
+    data = await api("/texts");
   } catch {
     box.remove();
+    return;
   }
+  const done = readTexts();
+  const editor = data.can_edit;
+  const hiddenCount = data.texts.filter((t) => t.hidden).length;
+  box.innerHTML = `
+    <div class="feed-card-head"><h3>Textes gradués</h3>
+      <span class="muted small">${data.progress ? "« À ta mesure » : surtout des mots que tu as déjà vus" : "Textes courts, par niveau HSK"}</span>
+      ${editor ? '<button type="button" class="secondary small-button" id="text-new">＋ Nouveau texte</button>' : ""}</div>
+    ${editor && hiddenCount ? `<p class="muted small">${plural(hiddenCount, "texte masqué", "textes masqués")} aux élèves (visible${hiddenCount > 1 ? "s" : ""} des professeurs seulement).</p>` : ""}
+    ${data.texts.length ? `<div class="text-cards">${data.texts.map((t) => textCard(t, done, editor)).join("")}</div>`
+      : '<p class="muted">Aucun texte pour l\'instant.</p>'}`;
+  if (!editor) return;
+  const refresh = () => gradedTexts(box);
+  box.querySelector("#text-new").addEventListener("click", () =>
+    openTextEditor(null, (saved) => { location.hash = `#/lecture?texte=${saved.id}`; }));
+  box.querySelectorAll("[data-edit]").forEach((b) => b.addEventListener("click", async () => {
+    try {
+      openTextEditor(await api(`/texts/${b.dataset.edit}`), refresh);
+    } catch (err) {
+      toast(`Erreur : ${err.message}`, "error");
+    }
+  }));
+  box.querySelectorAll("[data-hide]").forEach((b) => b.addEventListener("click", async () => {
+    try {
+      await setTextHidden(Number(b.dataset.hide), b.dataset.hidden !== "true");
+      refresh();
+    } catch (err) {
+      toast(`Erreur : ${err.message}`, "error");
+    }
+  }));
 }
 
 export async function readingView(el, { query } = {}) {
@@ -106,7 +143,8 @@ export async function readingView(el, { query } = {}) {
       <p class="small"><a href="#/lecture">← Tous les textes</a></p>
       <div class="toolbar text-head">
         <div>
-          <p class="text-card-tags"><span class="tag">HSK ${graded.level}</span></p>
+          <p class="text-card-tags"><span class="tag">HSK ${graded.level}</span>
+            ${graded.hidden ? '<span class="tag hidden-tag">Masqué aux élèves</span>' : ""}</p>
           <h2 lang="zh">${escape(graded.title)} <small class="muted">${escape(graded.title_fr)}</small></h2>
           <p class="muted small">${graded.known === null
             ? `${plural(graded.words, "mot")}`
@@ -116,9 +154,12 @@ export async function readingView(el, { query } = {}) {
         <div class="actions">
           ${session.user && graded.new_word_ids.length ? `<button type="button" class="secondary small-button" id="keep-new">＋ Garder les ${plural(graded.new_word_ids.length, "mot nouveau", "mots nouveaux")}</button>` : ""}
           <button type="button" class="secondary small-button" id="mark-read" aria-pressed="false"></button>
+          ${graded.can_edit ? `
+            <button type="button" class="secondary small-button" id="text-edit">✎ Modifier</button>
+            <button type="button" class="secondary small-button" id="text-hide">${graded.hidden ? "Afficher aux élèves" : "Masquer aux élèves"}</button>` : ""}
         </div>
       </div>
-      <details class="card-box text-translation"><summary>Traduction</summary><p>${escape(graded.translation)}</p></details>` : `
+      ${graded.translation ? `<details class="card-box text-translation"><summary>Traduction</summary><p>${escape(graded.translation)}</p></details>` : ""}` : `
     <h2>Lecture assistée</h2>
     <section class="card-box graded-texts" id="graded"><p class="muted">Chargement des textes…</p></section>
     <p class="muted">Ou colle et tape ton propre texte en chinois : chaque mot est repéré dans le
@@ -141,6 +182,17 @@ export async function readingView(el, { query } = {}) {
     <div id="reading-out"></div>`;
   if (!graded) gradedTexts(el.querySelector("#graded"));
   if (graded) bindGraded();
+  // Professeurs : modifier ou masquer le texte, puis l'afficher de nouveau.
+  const reload = () => readingView(el, { query });
+  el.querySelector("#text-edit")?.addEventListener("click", () => openTextEditor(graded, reload));
+  el.querySelector("#text-hide")?.addEventListener("click", async () => {
+    try {
+      await setTextHidden(graded.id, !graded.hidden);
+      reload();
+    } catch (err) {
+      toast(`Erreur : ${err.message}`, "error");
+    }
+  });
 
   bindSpeakButtons(el);
   const textarea = el.querySelector("#reading-text");

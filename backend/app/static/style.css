@@ -832,3 +832,14 @@ mark.miss { background: color-mix(in srgb, var(--again) 25%, transparent); color
 .text-options { margin-bottom: .5rem; }
 .reading.mark-fresh .rd-word.fresh { background: color-mix(in srgb, var(--hard) 20%, transparent); }
 .reading.mark-fresh .rd-word.fresh.selected { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+
+/* Textes gradués : outils des professeurs (modifier, masquer). */
+.text-card-wrap { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.text-card-wrap > .text-card { flex: 1; }
+.text-card-tools { display: flex; justify-content: space-between; gap: .5rem; padding: 0 .25rem; }
+.text-card.is-hidden { opacity: .6; border-style: dashed; }
+.tag.hidden-tag { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--border); }
+.graded-texts .feed-card-head { flex-wrap: wrap; gap: .5rem; }
+.text-editor textarea { font-size: 1rem; }
+.text-editor .row { align-items: flex-end; }
+.text-editor-level { flex: 0 0 auto; }

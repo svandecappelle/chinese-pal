@@ -16,8 +16,8 @@ hors ligne (PWA), fil de révision par petits pas, Mes mots et notes personnelle
 
 - **Mes mots, suite** : proposer au professeur les mots personnels de ses élèves (les plus gardés)
   pour les ajouter au vocabulaire commun.
-- **Textes gradués, suite** : plus de textes (HSK 4 et au-delà), textes ajoutés par les
-  professeurs, « lu » enregistré sur le compte plutôt que sur l'appareil, audio du texte entier.
+- **Textes gradués, suite** : plus de textes fournis (HSK 4 et au-delà), « lu » enregistré sur le
+  compte plutôt que sur l'appareil, audio du texte entier, textes réservés à un groupe.
 - **Petits dialogues audio** avec des questions de compréhension : écouter des phrases entières,
   pas seulement des mots.
 - **Décomposition des caractères** : clés, composants, caractères qui partagent un composant.

@@ -1,41 +1,71 @@
-"""Textes gradués : de courts textes (niveaux HSK 1 à 3, écrits pour l'application) et, pour chacun,
-la part de mots déjà vus par l'élève. Un texte « à ta mesure » contient surtout des mots connus et
-quelques mots nouveaux ; il se lit dans la lecture assistée, mots nouveaux surlignés.
+"""Textes gradués : de courts textes (niveaux HSK) et, pour chacun, la part de mots déjà vus par
+l'élève. Un texte « à ta mesure » contient surtout des mots connus et quelques mots nouveaux ; il
+se lit dans la lecture assistée, mots nouveaux surlignés.
+
+Les textes sont en base (`graded_texts`). Ceux écrits pour l'application (data/textes.json) y
+sont chargés au démarrage, sans écraser les modifications. Les professeurs et administrateurs
+(droit « manage_courses ») les modifient, en écrivent de nouveaux et les masquent aux élèves.
 """
 
 import json
-from functools import cache
+import logging
+import re
+from functools import lru_cache
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field, field_validator
 
 from .. import auth, drills
 from ..db import pool
 from .vocab import DATA_DIR
 
 router = APIRouter(prefix="/api/texts", tags=["textes gradués"])
+log = logging.getLogger(__name__)
 
 # Part de mots connus (en occurrences) d'un texte à lire maintenant : assez pour suivre, avec
 # encore quelques mots à découvrir.
 GOOD_FIT = 0.75
+EDIT_PERMISSION = "manage_courses"
+Editor = Annotated[dict, Depends(auth.require(EDIT_PERMISSION))]
+FIELDS = "id, level, title, title_fr, text, translation, hidden, builtin_id"
+CHINESE = re.compile(r"[㐀-鿿]")
 
 
-@cache
-def texts() -> list[dict]:
-    return json.loads((DATA_DIR / "textes.json").read_text(encoding="utf-8"))
+def seed_texts() -> None:
+    """Charge les textes fournis absents de la base (un texte modifié ou masqué n'est pas touché)."""
+    try:
+        builtin = json.loads((DATA_DIR / "textes.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return
+    with pool.connection() as conn:
+        added = 0
+        for t in builtin:
+            added += conn.execute(
+                """INSERT INTO graded_texts (builtin_id, level, title, title_fr, text, translation)
+                   VALUES (%(id)s, %(level)s, %(title)s, %(title_fr)s, %(text)s, %(translation)s)
+                   ON CONFLICT (builtin_id) DO NOTHING""", t).rowcount
+    if added:
+        log.info("Textes gradués chargés : %d", added)
 
 
-@cache
-def text_words(text_id: int) -> tuple[str, ...]:
+def can_edit(user: dict | None) -> bool:
+    return user is not None and auth.can(user, EDIT_PERMISSION)
+
+
+@lru_cache(maxsize=512)
+def words_of(text: str) -> tuple[str, ...]:
     """Mots chinois du texte, dans l'ordre (avec répétitions)."""
-    text = next(t for t in texts() if t["id"] == text_id)
-    return tuple(piece for piece, is_word in drills.reading_tokens(text["text"]) if is_word)
+    return tuple(piece for piece, is_word in drills.reading_tokens(text) if is_word)
 
 
 def vocabulary(conn, words) -> dict[str, int]:
     """Mots du vocabulaire présents dans ces mots ou dans leurs morceaux (jusqu'à 4 caractères)."""
     pieces = {w[i:j] for w in words for i in range(len(w)) for j in range(i + 1, min(len(w), i + 4) + 1)}
     found: dict[str, int] = {}
-    for row in conn.execute("SELECT id, hanzi FROM words WHERE hanzi = ANY(%s) AND owner_id IS NULL ORDER BY id", (list(pieces),)):
+    for row in conn.execute(
+            "SELECT id, hanzi FROM words WHERE hanzi = ANY(%s) AND owner_id IS NULL ORDER BY id",
+            (list(pieces),)):
         found.setdefault(row["hanzi"], row["id"])
     return found
 
@@ -77,39 +107,116 @@ def coverage(words: tuple[str, ...], vocab: dict[str, int], seen: set[int] | Non
     }
 
 
+def tokenized(texts: list[dict]) -> dict[int, tuple[str, ...]]:
+    try:
+        return {t["id"]: words_of(t["text"]) for t in texts}
+    except FileNotFoundError as err:
+        raise HTTPException(503, str(err))
+
+
 @router.get("")
 def list_texts(user: dict | None = Depends(auth.visitor)):
     """Les textes, avec pour chacun la part de mots connus de l'élève (compte ou invité) ; les
-    plus adaptés (assez de mots connus, quelques nouveaux) d'abord."""
-    try:
-        all_words = {t["id"]: text_words(t["id"]) for t in texts()}
-    except FileNotFoundError as err:
-        raise HTTPException(503, str(err))
+    plus adaptés (assez de mots connus, quelques nouveaux) d'abord. Les textes masqués ne sont
+    listés que pour les professeurs (`hidden`)."""
+    editor = can_edit(user)
     with pool.connection() as conn:
+        rows = conn.execute(
+            f"SELECT {FIELDS} FROM graded_texts WHERE %s OR NOT hidden ORDER BY level, id",
+            (editor,)).fetchall()
+        all_words = tokenized(rows)
         vocab = vocabulary(conn, {w for words in all_words.values() for w in words})
         seen = seen_words(conn, user, list(vocab.values()))
     result = []
-    for t in texts():
+    for t in rows:
         cov = coverage(all_words[t["id"]], vocab, seen)
-        fits = cov["known"] is not None and GOOD_FIT <= cov["known"] < 1
-        result.append({k: t[k] for k in ("id", "level", "title", "title_fr")}
+        fits = not t["hidden"] and cov["known"] is not None and GOOD_FIT <= cov["known"] < 1
+        result.append({k: t[k] for k in ("id", "level", "title", "title_fr", "hidden")}
                       | {"length": len(t["text"]), "fits": fits} | cov)
     # À ta mesure d'abord (les plus connus en tête), puis par niveau.
     result.sort(key=lambda t: (not t["fits"], -(t["known"] or 0) if t["fits"] else 0, t["level"], t["id"]))
-    return {"progress": seen is not None, "texts": result}
+    return {"progress": seen is not None, "can_edit": editor, "texts": result}
+
+
+def text_row(conn, text_id: int, user: dict | None) -> dict:
+    row = conn.execute(f"SELECT {FIELDS} FROM graded_texts WHERE id = %s", (text_id,)).fetchone()
+    if row is None or (row["hidden"] and not can_edit(user)):
+        raise HTTPException(404, "Texte introuvable")
+    return row
 
 
 @router.get("/{text_id}")
 def get_text(text_id: int, user: dict | None = Depends(auth.visitor)):
-    text = next((t for t in texts() if t["id"] == text_id), None)
-    if text is None:
-        raise HTTPException(404, "Texte introuvable")
-    try:
-        words = text_words(text_id)
-    except FileNotFoundError as err:
-        raise HTTPException(503, str(err))
     with pool.connection() as conn:
+        text = text_row(conn, text_id, user)
+        words = tokenized([text])[text_id]
         vocab = vocabulary(conn, set(words))
         seen = seen_words(conn, user, list(vocab.values()))
-    new_ids = [vocab[w] for w in coverage(words, vocab, seen)["new_words"]]
-    return text | coverage(words, vocab, seen) | {"new_word_ids": new_ids}
+    cov = coverage(words, vocab, seen)
+    return text | cov | {"new_word_ids": [vocab[w] for w in cov["new_words"]], "can_edit": can_edit(user)}
+
+
+class TextIn(BaseModel):
+    level: int = Field(ge=1, le=9)
+    title: str = Field(min_length=1, max_length=60)
+    title_fr: str = Field("", max_length=120)
+    text: str = Field(min_length=1, max_length=3000)
+    translation: str = Field("", max_length=6000)
+    hidden: bool = False
+
+    @field_validator("title", "title_fr", "text", "translation")
+    @classmethod
+    def trimmed(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("text")
+    @classmethod
+    def chinese(cls, value: str) -> str:
+        if not CHINESE.search(value):
+            raise ValueError("le texte doit être en chinois")
+        return value
+
+    @field_validator("title")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        if not value:
+            raise ValueError("titre vide")
+        return value
+
+
+class HiddenIn(BaseModel):
+    hidden: bool
+
+
+@router.post("", status_code=201)
+def create_text(data: TextIn, user: Editor):
+    with pool.connection() as conn:
+        return conn.execute(
+            f"""INSERT INTO graded_texts (level, title, title_fr, text, translation, hidden, created_by)
+                VALUES (%(level)s, %(title)s, %(title_fr)s, %(text)s, %(translation)s, %(hidden)s, %(user)s)
+                RETURNING {FIELDS}""", data.model_dump() | {"user": user["id"]}).fetchone()
+
+
+@router.put("/{text_id}")
+def update_text(text_id: int, data: TextIn, _: Editor):
+    with pool.connection() as conn:
+        row = conn.execute(
+            f"""UPDATE graded_texts SET level = %(level)s, title = %(title)s, title_fr = %(title_fr)s,
+                       text = %(text)s, translation = %(translation)s, hidden = %(hidden)s, updated_at = now()
+                WHERE id = %(id)s RETURNING {FIELDS}""", data.model_dump() | {"id": text_id}).fetchone()
+    if row is None:
+        raise HTTPException(404, "Texte introuvable")
+    return row
+
+
+@router.put("/{text_id}/hidden")
+def set_hidden(text_id: int, data: HiddenIn, _: Editor):
+    """Masque le texte aux élèves (il reste visible et modifiable par les professeurs), ou le
+    rend de nouveau visible."""
+    with pool.connection() as conn:
+        row = conn.execute(
+            "UPDATE graded_texts SET hidden = %s, updated_at = now() WHERE id = %s RETURNING id, hidden",
+            (data.hidden, text_id)).fetchone()
+    if row is None:
+        raise HTTPException(404, "Texte introuvable")
+    return row
