@@ -279,7 +279,13 @@ export async function playView(el, { id, query }) {
     data = await api(`/exercises/${id}/session`);
     picked = await chooseModes(el, data, id);
     if (picked.length < data.exercise.modes.length) {
-      data = await api(`/exercises/${id}/session?modes=${encodeURIComponent(picked.join(","))}`);
+      try {
+        data = await api(`/exercises/${id}/session?modes=${encodeURIComponent(picked.join(","))}`);
+      } catch (err) {
+        // Hors ligne (exercice préparé) : les cartes des modes choisis, prises dans la file complète.
+        if (navigator.onLine !== false && !/^Hors ligne/.test(err.message)) throw err;
+        data = { ...data, cards: data.cards.filter((c) => picked.includes(c.mode)) };
+      }
     }
   }
   const quitHref = step ? "#/fil" : "#/";

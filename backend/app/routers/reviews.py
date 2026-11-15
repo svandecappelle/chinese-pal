@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -15,6 +15,27 @@ class ReviewIn(BaseModel):
     word_id: int
     mode: Mode
     grade: int = Field(ge=1, le=4)
+    # Moment de la réponse, pour une réponse donnée hors ligne et envoyée plus tard.
+    answered_at: datetime | None = None
+
+
+# Une réponse hors ligne plus ancienne compte à cette date au plus tôt.
+OFFLINE_MAX_AGE = timedelta(days=30)
+
+
+def answer_time(answered_at: datetime | None, last_reviewed_at: datetime | None) -> datetime:
+    """Moment retenu pour une réponse : maintenant, ou celui de la réponse hors ligne, borné
+    (jamais dans le futur, ni avant la réponse précédente sur cette carte, ni il y a plus de
+    30 jours)."""
+    now = datetime.now(timezone.utc)
+    if answered_at is None:
+        return now
+    if answered_at.tzinfo is None:
+        answered_at = answered_at.replace(tzinfo=timezone.utc)
+    when = max(min(answered_at, now), now - OFFLINE_MAX_AGE)
+    if last_reviewed_at is not None:
+        when = max(when, min(last_reviewed_at, now))
+    return when
 
 
 # Le mot appartient-il (dans ce mode) à un exercice public ?
@@ -39,16 +60,16 @@ def submit_review(review: ReviewIn, request: Request, response: Response,
     """
     with pool.connection() as conn:
         if user is None or user["is_guest"]:
-            allowed = conn.execute(PUBLIC_WORD_SQL, review.model_dump()).fetchone()
+            allowed = conn.execute(PUBLIC_WORD_SQL, review.model_dump(include={"word_id", "mode"})).fetchone()
             if allowed is None:
                 raise HTTPException(401, "Connecte-toi pour réviser ce mot")
             if user is None:
                 user = auth.create_guest(conn, request, response)
-        params = review.model_dump() | {"user_id": user["id"]}
+        params = review.model_dump(exclude={"answered_at"}) | {"user_id": user["id"]}
         row = conn.execute(
             """SELECT w.id AS word_id, %(mode)s::text AS mode, w.hanzi, w.pinyin, w.translation,
                       w.classifiers,
-                      rs.ease, rs.interval_days, rs.repetitions, rs.lapses
+                      rs.ease, rs.interval_days, rs.repetitions, rs.lapses, rs.last_reviewed_at
                FROM words w
                LEFT JOIN review_states rs
                    ON rs.user_id = %(user_id)s AND rs.word_id = w.id AND rs.mode = %(mode)s
@@ -60,7 +81,8 @@ def submit_review(review: ReviewIn, request: Request, response: Response,
             raise HTTPException(404, "Mot introuvable")
 
         state, delay = schedule(CardState.from_row(row), review.grade)
-        now = datetime.now(timezone.utc)
+        # Réponse hors ligne : la carte est reprogrammée et notée à l'heure de la réponse.
+        now = answer_time(review.answered_at, row["last_reviewed_at"])
         params |= {
             "ease": state.ease,
             "interval_days": state.interval_days,

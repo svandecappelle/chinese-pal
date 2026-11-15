@@ -1,6 +1,7 @@
 // Hors ligne : les réponses d'un test sont gardées dans le navigateur, puis envoyées dès que le
 // réseau revient (au retour en ligne, ou au prochain lancement de l'application).
-// La carte est reprogrammée au moment de l'envoi, pas au moment de la réponse.
+// Chaque réponse part avec son heure (`answered_at`) : la carte est reprogrammée et la réponse
+// comptée à l'heure où elle a été donnée, pas à celle de l'envoi.
 
 const QUEUE_KEY = "chinese.pendingReviews";
 
@@ -39,7 +40,7 @@ export function flushReviews() {
     try {
       let queue = read();
       while (queue.length) {
-        const { answered_at: _, ...review } = queue[0];
+        const review = queue[0];
         let res;
         try {
           res = await fetch("/api/reviews", {
@@ -69,6 +70,12 @@ export const isNetworkError = (err) => err instanceof TypeError;
 
 /** Vide le cache des réponses de l'API (changement de compte : rien ne doit rester). */
 export async function clearApiCache() {
+  // Les exercices préparés pour le hors ligne (offline-prep.js) ne le sont plus.
+  try {
+    localStorage.removeItem("chinese.offlineReady");
+  } catch {
+    // Stockage indisponible.
+  }
   try {
     await caches?.delete("chinese-api");
   } catch {

@@ -327,7 +327,8 @@ label.small { font-size: .9rem; }
   /* Sur téléphone, l'indicateur n'apparaît que hors ligne ou serveur injoignable. */
   header .status.offline, header .status.ko { display: inline; order: 2; font-size: .75rem; }
   header .account { margin-left: auto; }
-  header nav { order: 3; flex-basis: 100%; overflow-x: auto; }
+  header nav { order: 3; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; }
+  header nav a { white-space: nowrap; flex: none; }
   .hide-narrow { display: none; }
   .big-hanzi { font-size: 3rem; }
   .pager { justify-content: center; }
@@ -850,3 +851,60 @@ mark.miss { background: color-mix(in srgb, var(--again) 25%, transparent); color
 .student-word-head { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
 .student-word p { margin: .3rem 0; }
 .student-word-form input { flex: 1; min-width: 10rem; }
+
+/* Page Exercices : grille qui prend la largeur sur grand écran, cartes compactes, rangement. */
+main:has(.ex-page) { max-width: 1440px; }
+.ex-head .actions { margin-top: 0; }
+.ex-todo-total { color: var(--fg); }
+.ex-sort-hint { white-space: nowrap; }
+.ex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 1rem; align-items: stretch; }
+.ex-card { gap: .55rem; position: relative; container-type: inline-size; }
+.ex-card:hover { transform: none; box-shadow: 0 6px 18px rgb(0 0 0 / .08); }
+.ex-card.has-todo { border-top: 3px solid var(--accent); }
+.ex-top { display: flex; align-items: flex-start; gap: .5rem; }
+.ex-title { flex: 1; margin: 0; font-size: 1.1rem; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
+.ex-badge { flex: none; font-size: .78rem; font-weight: 600; padding: .15rem .55rem; border-radius: 999px; white-space: nowrap; }
+.ex-badge.todo { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.ex-badge.done { background: color-mix(in srgb, var(--good) 12%, transparent); color: var(--good); }
+.ex-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ex-tags .ex-more { cursor: pointer; background: var(--surface-2); color: var(--fg); font: inherit; font-size: .75rem; }
+.ex-more-tags { display: contents; }
+.ex-more-tags[hidden] { display: none; }
+.ex-progress { display: flex; align-items: center; gap: .6rem; }
+.ex-progress .progress { flex: 1; }
+.ex-progress span { color: var(--muted); min-width: 2.6rem; text-align: right; }
+.ex-stats { display: flex; flex-wrap: wrap; gap: .25rem .9rem; margin: 0; }
+.ex-stats .due { color: var(--good); font-weight: 600; }
+.ex-stats .new { color: var(--easy); font-weight: 600; }
+.ex-actions { flex-wrap: nowrap; padding-top: .25rem; }
+.ex-actions .button { padding-inline: .8rem; white-space: nowrap; }
+/* Carte étroite : « Fiches » en icône. */
+@container (max-width: 330px) { .ex-icon-label { display: none; } }
+.ex-actions .ex-main { flex: 1; text-align: center; }
+.ex-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; margin: 0;
+  padding-top: .55rem; border-top: 1px solid var(--border); }
+.ex-foot a { color: var(--muted); }
+.ex-foot a:hover { color: var(--accent); }
+.offline-prep { display: inline-flex; align-items: center; flex-wrap: wrap; gap: .4rem; margin-right: auto; }
+
+/* Poignée de rangement : glisser à la souris ou au doigt (la page ne défile pas depuis elle). */
+.drag-handle {
+  flex: none; touch-action: none; cursor: grab; user-select: none;
+  width: 1.9rem; height: 1.9rem; margin: -.2rem 0 0 -.3rem; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent; border-radius: 6px;
+  color: var(--muted); font-size: 1.15rem; line-height: 1;
+}
+.drag-handle:hover, .drag-handle:focus-visible { background: var(--surface-2); border-color: var(--border); color: var(--fg); }
+.reordering, .reordering * { cursor: grabbing !important; user-select: none; }
+.ex-card.dragging { z-index: 2; opacity: .92; outline: 2px dashed var(--accent); outline-offset: 2px;
+  box-shadow: 0 12px 28px rgb(0 0 0 / .18); transform: scale(1.02); transition: transform .12s, box-shadow .12s; }
+
+/* Téléphone : une colonne, cartes plus serrées, « Fiches » en icône. */
+@media (max-width: 600px) {
+  .ex-grid { grid-template-columns: 1fr; gap: .75rem; }
+  .ex-card { padding: .85rem; gap: .45rem; }
+  .ex-head .actions { width: 100%; justify-content: space-between; }
+  .ex-icon-label { display: none; }
+  .ex-actions .button { padding: .55rem .75rem; }
+}

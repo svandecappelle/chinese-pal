@@ -4,7 +4,7 @@ Propositions restantes, classées par public. Déjà faits : dictée (écoute), 
 phrases d'exemple, entraînement aux tons, statistiques personnelles, lecture assistée, mode
 hors ligne (PWA), fil de révision par petits pas, Mes mots et notes personnelles (mots hors
 vocabulaire compris, que le professeur peut ajouter au vocabulaire), textes gradués
-(modifiables et masquables par les professeurs), tests de l'API à chaque push.
+(modifiables et masquables par les professeurs), tests de l'API à chaque push, préparation d'un exercice pour le hors ligne.
 
 ## Priorités
 
@@ -46,5 +46,5 @@ vocabulaire compris, que le professeur peut ajouter au vocabulaire), textes grad
 
 - **Tests, suite** : tests du frontend (vues principales dans un navigateur sans écran,
   Playwright), et des scénarios restants (fiches d'écriture, statistiques, prononciation).
-- **Hors ligne, suite** : préparer d'avance un exercice pour le hors ligne (tracés et audio de tous
-  ses mots) ; noter la date réelle des réponses données hors ligne.
+- **Hors ligne, suite** : envoyer aussi hors ligne les pas du fil terminés ; préparer
+  automatiquement les exercices du fil (application installée).

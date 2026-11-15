@@ -117,6 +117,14 @@ docker compose exec db psql -U chinese
 
 ## Fonctionnement des révisions
 
+**Page Exercices** ([exercises.js](backend/app/static/js/views/exercises.js)) : une carte par
+exercice (« N à faire » ou « ✓ à jour », progression, modes repliés au-delà de trois, Test,
+Réviser et Fiches sur une ligne). Sur grand écran la grille prend la largeur disponible (jusqu'à
+1440 px, 3 à 4 colonnes) ; sur téléphone, une colonne. Chacun **range ses exercices** en tirant
+la poignée ⠿ d'une carte, à la souris ou au doigt (la page défile près des bords), ou avec les
+flèches du clavier sur la poignée ; l'ordre est gardé sur son compte (table `exercise_order`,
+`PUT /api/exercises/order`), les exercices nouveaux viennent après.
+
 Un exercice se lance de deux façons :
 
 - **Réviser** : sans pression, les mots défilent un par un avec leurs caractères, leur pinyin,
@@ -255,7 +263,14 @@ la fait marcher sans réseau :
 - les réponses d'un test données hors ligne attendent dans le navigateur
   ([offline.js](backend/app/static/js/offline.js)) et partent au retour du réseau (ou du serveur,
   réessayé toutes les 30 s) ; l'indicateur de connexion affiche « hors ligne » et le nombre de
-  réponses en attente. La carte est reprogrammée au moment de l'envoi.
+  réponses en attente. Chaque réponse part avec son heure (`answered_at`) : la carte est
+  reprogrammée et la réponse comptée (fil, statistiques) à l'heure où elle a été donnée — jamais
+  dans le futur, ni avant la réponse précédente sur la carte, ni il y a plus de 30 jours.
+- **Préparer pour le hors ligne** (lien sur la carte d'un exercice) charge d'avance, avec le
+  réseau, la file du test, les mots à réviser, les tracés de tous les caractères et l'audio des
+  mots, classificateurs et phrases d'exemple ([offline-prep.js](backend/app/static/js/offline-prep.js)) ;
+  l'exercice est ensuite marqué « ✓ Prêt hors ligne » (dans ce navigateur). Hors ligne, choisir
+  une partie des modes du test filtre la file préparée.
 - Le cache des réponses de l'API est vidé à la connexion et à la déconnexion.
 
 Les navigateurs n'activent le service worker qu'en HTTPS (ou sur `localhost`) : il ne fonctionne

@@ -2,9 +2,12 @@
 
 const HANZI = /[一-鿿]/;
 
+/** Adresse des tracés d'un caractère (la même pour l'affichage et la préparation hors ligne). */
+export const strokesUrl = (char) => `strokes/${encodeURIComponent(char)}.json`;
+
 /** Tracés d'un caractère, servis par l'app (/strokes/<caractère>.json) : disponibles hors ligne. */
 export function charDataLoader(char, onLoad, onError) {
-  fetch(`strokes/${encodeURIComponent(char)}.json`)
+  fetch(strokesUrl(char))
     .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`Pas de tracé pour ${char}`))))
     .then(onLoad, onError);
 }

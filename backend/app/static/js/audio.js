@@ -39,16 +39,21 @@ export function stopSpeaking() {
   window.speechSynthesis?.cancel();
 }
 
+/** Adresse de l'audio d'un texte (la même pour l'écoute et la préparation hors ligne). */
+export function ttsUrl(text, pinyin) {
+  // `v` : nouvelle adresse pour écarter l'audio gardé par le navigateur avant la revalidation.
+  const params = new URLSearchParams({ text, v: "2" });
+  if (pinyin) params.set("pinyin", pinyin);
+  return `/api/tts?${params}`;
+}
+
 /**
  * Prononce un texte en mandarin. `pinyin` fixe la lecture d'un caractère seul
  * (长 cháng ou zhǎng), que la synthèse ne peut pas deviner sans contexte.
  */
 export function speak(text, pinyin) {
   stopSpeaking();
-  // `v` : nouvelle adresse pour écarter l'audio gardé par le navigateur avant la revalidation.
-  const params = new URLSearchParams({ text, v: "2" });
-  if (pinyin) params.set("pinyin", pinyin);
-  const audio = new Audio(`/api/tts?${params}`);
+  const audio = new Audio(ttsUrl(text, pinyin));
   current = audio;
   audio.play().catch((err) => {
     // Interrompu par une autre lecture, ou lecture automatique bloquée par le navigateur.

@@ -208,14 +208,38 @@ def list_exercises(user: dict | None = Depends(auth.visitor)):
     Sans compte : les exercices publics, avec la progression de l'invité s'il en a une.
     """
     with pool.connection() as conn:
+        # L'ordre choisi par l'utilisateur (glisser-déposer) d'abord ; les exercices qu'il n'a pas
+        # encore placés suivent, dans l'ordre par défaut.
         exercises = conn.execute(
-            f"SELECT * FROM ({EXERCISES_SQL}) e WHERE assigned OR can_edit "
-            "ORDER BY assigned DESC, personal DESC, all_words DESC, name",
+            f"""SELECT e.* FROM ({EXERCISES_SQL}) e
+                LEFT JOIN exercise_order o ON o.user_id = %(user_id)s AND o.exercise_id = e.id
+                WHERE assigned OR can_edit
+                ORDER BY assigned DESC, o.position NULLS LAST, personal DESC, all_words DESC, name""",
             user_params(user),
         ).fetchall()
         for exercise in exercises:
             exercise["stats"] = exercise_stats(conn, exercise, user["id"] if user else None)
         return exercises
+
+
+class OrderIn(BaseModel):
+    ids: list[int] = Field(max_length=1000)
+
+
+@router.put("/order", status_code=204)
+def save_order(data: OrderIn, user: dict | None = Depends(auth.visitor)):
+    """Enregistre l'ordre des exercices de l'utilisateur (compte ou invité) : `ids` dans l'ordre
+    voulu. Les exercices absents de la liste reprennent l'ordre par défaut, après."""
+    if user is None:
+        raise HTTPException(401, "Connecte-toi pour ranger tes exercices")
+    ids = list(dict.fromkeys(data.ids))
+    with pool.connection() as conn:
+        conn.execute("DELETE FROM exercise_order WHERE user_id = %s", (user["id"],))
+        conn.execute(
+            """INSERT INTO exercise_order (user_id, exercise_id, position)
+               SELECT %s, e.id, o.position FROM unnest(%s::int[]) WITH ORDINALITY AS o(id, position)
+               JOIN exercises e ON e.id = o.id""",
+            (user["id"], ids))
 
 
 @router.get("/{exercise_id}")
