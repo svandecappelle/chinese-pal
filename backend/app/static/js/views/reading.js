@@ -93,7 +93,7 @@ export async function readingView(el, { query } = {}) {
   const graded = textId ? await api(`/texts/${textId}`) : null;
   const progress = Boolean(session.user || session.guest);
   const editor = can("manage_vocab");
-  // Mots du vocabulaire déjà gardés dans Mes mots.
+  // Mots déjà gardés dans Mes mots (du vocabulaire ou personnels).
   const mine = new Set();
   if (session.user) {
     api("/my-words").then((data) => data.words.forEach((w) => mine.add(w.word_id))).catch(() => {});
@@ -197,17 +197,21 @@ export async function readingView(el, { query } = {}) {
       </div>
       ${info.word_id ? `
         <p>${escape(info.translation)}</p>
-        <p class="small"><span class="tag">✓ dans le vocabulaire</span>
+        <p class="small"><span class="tag">${info.personal ? "✓ mot personnel" : "✓ dans le vocabulaire"}</span>
           <button type="button" class="link-button" id="rd-open">fiche du mot</button></p>
         ${session.user ? `<button type="button" class="secondary small-button" id="rd-mine"
           aria-pressed="${mine.has(info.word_id)}">${mine.has(info.word_id) ? "✓ Dans Mes mots · retirer" : "＋ Mes mots"}</button>` : ""}` : `
         ${info.english ? `<p>${escape(info.english)} <small class="muted">(CC-CEDICT, en anglais)</small></p>`
           : '<p class="muted">Absent du dictionnaire : lu caractère par caractère.</p>'}
-        ${editor ? `
+        ${session.user ? `
           <form id="rd-add" class="rd-add">
-            <input id="rd-translation" required placeholder="Sens en français" aria-label="Sens en français">
-            <button type="submit">Ajouter au vocabulaire</button>
-          </form>` : ""}`}`;
+            <input id="rd-pinyin" required value="${escape(pinyin)}" placeholder="Pinyin" aria-label="Pinyin">
+            <input id="rd-translation" required maxlength="200" placeholder="Sens en français" aria-label="Sens en français">
+            <button type="submit" value="mine">＋ Mes mots</button>
+            ${editor ? '<button type="submit" value="vocab" class="secondary">Ajouter au vocabulaire</button>' : ""}
+          </form>
+          <p class="muted small">${editor ? "Mes mots : pour toi seul, avec ton sens. Vocabulaire : pour tout le monde."
+            : "Le mot entre dans tes révisions avec le sens que tu lui donnes ; il reste visible de toi seul."}</p>` : ""}`}`;
     box.querySelector(".rd-close").addEventListener("click", () => {
       selected = null;
       renderText();
@@ -216,9 +220,20 @@ export async function readingView(el, { query } = {}) {
     box.querySelector("#rd-mine")?.addEventListener("click", async (e) => {
       e.target.disabled = true;
       try {
-        await toggleMyWord(info.word_id, selected, mine.has(info.word_id));
-        if (mine.has(info.word_id)) mine.delete(info.word_id);
+        const inList = mine.has(info.word_id);
+        if (inList && info.personal && !confirm(`${selected} est un mot personnel : le retirer le supprime, avec ta progression. Continuer ?`)) {
+          e.target.disabled = false;
+          return;
+        }
+        await toggleMyWord(info.word_id, selected, inList);
+        if (inList) mine.delete(info.word_id);
         else mine.add(info.word_id);
+        // Mot personnel retiré : supprimé, il redevient hors vocabulaire.
+        if (inList && info.personal) {
+          Object.assign(info, { word_id: null, pinyin: null, translation: null, personal: false, seen: null });
+          renderText();
+          return;
+        }
       } catch (err) {
         toast(`Erreur : ${err.message}`, "error");
       }
@@ -226,19 +241,28 @@ export async function readingView(el, { query } = {}) {
     });
     box.querySelector("#rd-add")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const button = e.target.querySelector("button");
-      button.disabled = true;
+      const buttons = e.target.querySelectorAll("button");
+      buttons.forEach((b) => { b.disabled = true; });
+      const body = {
+        hanzi: selected,
+        pinyin: box.querySelector("#rd-pinyin").value.trim(),
+        translation: box.querySelector("#rd-translation").value.trim(),
+      };
       try {
-        const word = await api("/words", {
-          method: "POST",
-          body: { hanzi: selected, pinyin, translation: box.querySelector("#rd-translation").value.trim() },
-        });
-        Object.assign(info, { word_id: word.id, pinyin: word.pinyin, translation: word.translation });
-        toast(`${selected} ajouté au vocabulaire.`);
+        if (e.submitter?.value === "vocab") {
+          const word = await api("/words", { method: "POST", body });
+          Object.assign(info, { word_id: word.id, pinyin: word.pinyin, translation: word.translation, personal: false, seen: progress ? false : null });
+          toast(`${selected} ajouté au vocabulaire.`);
+        } else {
+          const word = await api("/my-words", { method: "POST", body });
+          Object.assign(info, { word_id: word.word_id, pinyin: word.pinyin, translation: word.translation, personal: word.personal, seen: progress ? false : null });
+          mine.add(word.word_id);
+          toast(`${selected} gardé dans Mes mots : il entre dans tes pas du fil.`, "success");
+        }
         renderText();
       } catch (err) {
         toast(`Erreur : ${err.message}`, "error");
-        button.disabled = false;
+        buttons.forEach((b) => { b.disabled = false; });
       }
     });
     box.scrollIntoView({ block: "nearest", behavior: "smooth" });

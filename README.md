@@ -157,6 +157,11 @@ utile quand la vérification souple du sens se trompe.
   se révise, se teste et s'imprime comme les autres, le fil le reprend, et il n'est modifiable
   que par sa liste (ni éditeur, ni administrateur). Sur la fiche d'un mot, **Ma note** garde son
   moyen mnémotechnique (visible de soi seul), montré avec la réponse en test et en révision.
+  Un mot **absent du vocabulaire** se garde aussi, depuis la lecture assistée : l'élève donne son
+  sens (le pinyin vient du dictionnaire, modifiable). C'est un mot personnel (`words.owner_id`,
+  `POST /api/my-words`) : visible de lui seul, hors du vocabulaire commun et des exercices des
+  autres ; il en corrige le sens sur sa fiche, le retirer de Mes mots le supprime, et il disparaît
+  avec son compte. S'il existe déjà dans le vocabulaire commun, c'est ce mot-là qui est gardé.
 - Le « jour » est calculé en UTC.
 
 ## Prononciation, ordre des traits, exemples

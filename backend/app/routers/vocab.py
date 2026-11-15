@@ -134,8 +134,8 @@ def list_words(deck_id: int | None = None):
                       coalesce(array_agg(dw.deck_id) FILTER (WHERE dw.deck_id IS NOT NULL), '{}')
                           AS deck_ids
                FROM words w LEFT JOIN deck_words dw ON dw.word_id = w.id
-               WHERE %(deck_id)s::int IS NULL OR EXISTS (
-                   SELECT 1 FROM deck_words f WHERE f.word_id = w.id AND f.deck_id = %(deck_id)s)
+               WHERE w.owner_id IS NULL AND (%(deck_id)s::int IS NULL OR EXISTS (
+                   SELECT 1 FROM deck_words f WHERE f.word_id = w.id AND f.deck_id = %(deck_id)s))
                GROUP BY w.id ORDER BY w.id""",
             {"deck_id": deck_id},
         ).fetchall()
@@ -169,11 +169,13 @@ def create_word(word: WordIn, _: VocabEditor):
 
 
 @router.get("/words/{word_id}")
-def get_word(word_id: int):
+def get_word(word_id: int, user: dict | None = Depends(auth.visitor)):
+    """Fiche d'un mot : du vocabulaire commun, ou mot personnel de l'élève (`personal`)."""
     with pool.connection() as conn:
         word = conn.execute(
-            "SELECT id, hanzi, pinyin, translation, classifiers FROM words WHERE id = %s",
-            (word_id,),
+            """SELECT id, hanzi, pinyin, translation, classifiers, owner_id IS NOT NULL AS personal
+               FROM words WHERE id = %s AND (owner_id IS NULL OR owner_id = %s)""",
+            (word_id, user["id"] if user else None),
         ).fetchone()
         if word is None:
             raise HTTPException(404, "Mot introuvable")
@@ -195,7 +197,7 @@ def set_classifiers(word_id: int, data: ClassifiersIn, _: VocabEditor):
     """Remplace les classificateurs d'un mot (liste vide : aucun)."""
     with pool.connection() as conn:
         word = conn.execute(
-            """UPDATE words SET classifiers = %s WHERE id = %s
+            """UPDATE words SET classifiers = %s WHERE id = %s AND owner_id IS NULL
                RETURNING id, hanzi, pinyin, classifiers""",
             (list(dict.fromkeys(data.classifiers)), word_id),
         ).fetchone()
@@ -231,7 +233,7 @@ def delete_example(example_id: int, _: VocabEditor):
 @router.delete("/words/{word_id}", status_code=204)
 def delete_word(word_id: int, _: VocabEditor):
     with pool.connection() as conn:
-        if conn.execute("DELETE FROM words WHERE id = %s", (word_id,)).rowcount == 0:
+        if conn.execute("DELETE FROM words WHERE id = %s AND owner_id IS NULL", (word_id,)).rowcount == 0:
             raise HTTPException(404, "Mot introuvable")
 
 
@@ -249,7 +251,7 @@ def list_packs():
         }
         without_classifiers = {
             (r["hanzi"], r["pinyin"]) for r in conn.execute(
-                "SELECT hanzi, pinyin FROM words WHERE classifiers = '{}'")
+                "SELECT hanzi, pinyin FROM words WHERE classifiers = '{}' AND owner_id IS NULL")
         }
     packs = []
     for pack_id, (name, description) in PACKS.items():
@@ -299,7 +301,7 @@ def import_pack(pack_id: str, _: VocabEditor):
         added = conn.execute(
             """INSERT INTO words (hanzi, pinyin, translation)
                SELECT * FROM unnest(%(hanzi)s::text[], %(pinyin)s::text[], %(translation)s::text[])
-               ON CONFLICT (hanzi, pinyin) DO NOTHING""",
+               ON CONFLICT (hanzi, pinyin) WHERE owner_id IS NULL DO NOTHING""",
             params,
         ).rowcount
         conn.execute(
@@ -307,7 +309,7 @@ def import_pack(pack_id: str, _: VocabEditor):
                SELECT %(deck_id)s, w.id
                FROM words w
                JOIN unnest(%(hanzi)s::text[], %(pinyin)s::text[]) AS p(hanzi, pinyin)
-                 ON p.hanzi = w.hanzi AND p.pinyin = w.pinyin
+                 ON p.hanzi = w.hanzi AND p.pinyin = w.pinyin AND w.owner_id IS NULL
                ON CONFLICT DO NOTHING""",
             {**params, "deck_id": deck_id},
         )
@@ -317,7 +319,7 @@ def import_pack(pack_id: str, _: VocabEditor):
                FROM unnest(%(word_hanzi)s::text[], %(word_pinyin)s::text[], %(ex_hanzi)s::text[],
                            %(ex_pinyin)s::text[], %(ex_translation)s::text[])
                     AS e(word_hanzi, word_pinyin, hanzi, pinyin, translation)
-               JOIN words w ON w.hanzi = e.word_hanzi AND w.pinyin = e.word_pinyin
+               JOIN words w ON w.hanzi = e.word_hanzi AND w.pinyin = e.word_pinyin AND w.owner_id IS NULL
                ON CONFLICT (word_id, hanzi) DO NOTHING""",
             {
                 "word_hanzi": [e["hanzi"] for e in examples],

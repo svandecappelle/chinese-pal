@@ -18,7 +18,7 @@ def candidates(
     if not typed:
         return {"typed": "", "candidates": []}
     with pool.connection() as conn:
-        rows = conn.execute("SELECT hanzi, pinyin FROM words").fetchall()
+        rows = conn.execute("SELECT hanzi, pinyin FROM words WHERE owner_id IS NULL").fetchall()
     preferred = {(row["hanzi"], normalize(row["pinyin"])) for row in rows}
     try:
         found = dictionary.candidates(typed, preferred, limit)
@@ -64,8 +64,11 @@ def assisted_reading(data: ReadingIn, user: dict | None = Depends(auth.visitor))
     with pool.connection() as conn:
         known = {}
         for row in conn.execute(
-            "SELECT id, hanzi, pinyin, translation FROM words WHERE hanzi = ANY(%s) ORDER BY id",
-            (list(hanzi),),
+            # Le vocabulaire commun d'abord, puis les mots personnels de l'élève.
+            """SELECT id, hanzi, pinyin, translation, owner_id IS NOT NULL AS personal FROM words
+               WHERE hanzi = ANY(%s) AND (owner_id IS NULL OR owner_id = %s)
+               ORDER BY owner_id NULLS FIRST, id""",
+            (list(hanzi), user["id"] if user else None),
         ):
             known.setdefault(row["hanzi"], row)
         seen = None if user is None else {r["word_id"] for r in conn.execute(
@@ -83,6 +86,7 @@ def assisted_reading(data: ReadingIn, user: dict | None = Depends(auth.visitor))
             "pinyin": row["pinyin"] if row else None,
             "reading": reading,
             "translation": row["translation"] if row else None,
+            "personal": bool(row and row["personal"]),
             "english": dictionary.definition_of(word),
             "seen": None if seen is None or row is None else row["id"] in seen,
         }

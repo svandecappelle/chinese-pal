@@ -35,7 +35,7 @@ def vocabulary(conn, words) -> dict[str, int]:
     """Mots du vocabulaire présents dans ces mots ou dans leurs morceaux (jusqu'à 4 caractères)."""
     pieces = {w[i:j] for w in words for i in range(len(w)) for j in range(i + 1, min(len(w), i + 4) + 1)}
     found: dict[str, int] = {}
-    for row in conn.execute("SELECT id, hanzi FROM words WHERE hanzi = ANY(%s) ORDER BY id", (list(pieces),)):
+    for row in conn.execute("SELECT id, hanzi FROM words WHERE hanzi = ANY(%s) AND owner_id IS NULL ORDER BY id", (list(pieces),)):
         found.setdefault(row["hanzi"], row["id"])
     return found
 

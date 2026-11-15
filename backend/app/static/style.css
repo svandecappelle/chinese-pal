@@ -636,6 +636,7 @@ mark.miss { background: color-mix(in srgb, var(--again) 25%, transparent); color
 .rd-pinyin { color: var(--accent); font-size: 1.1rem; }
 .rd-add { display: flex; gap: .5rem; flex-wrap: wrap; }
 .rd-add input { flex: 1; min-width: 10rem; }
+.rd-add #rd-pinyin { flex: 0 1 8rem; min-width: 6rem; }
 .reading-unknown { margin-top: 1rem; }
 .rd-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0; }
 .rd-chip { cursor: pointer; font-size: 1.05rem; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); }

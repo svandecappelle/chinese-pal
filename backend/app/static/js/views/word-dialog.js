@@ -10,7 +10,8 @@ import { toast } from "../ui.js";
 // `onChange` est appelé après un changement (exemple, classificateur, Mes mots, note).
 export async function openWordDialog(wordId, deckNames, onChange) {
   const word = await api(`/words/${wordId}`);
-  const editor = can("manage_vocab");
+  // Un mot personnel (gardé par l'élève hors vocabulaire) n'est modifiable que par lui.
+  const editor = can("manage_vocab") && !word.personal;
   const dialog = document.createElement("dialog");
   dialog.className = "word-dialog";
   document.body.append(dialog);
@@ -25,14 +26,18 @@ export async function openWordDialog(wordId, deckNames, onChange) {
     <div class="meaning center">${escape(word.translation)}</div>
     <p class="tags center">
       ${word.deck_ids.map((id) => `<span class="tag">${escape(deckNames[id] ?? "")}</span>`).join("")}
+      ${word.personal ? '<span class="tag">mot personnel</span>' : ""}
     </p>
     ${session.user ? `
     <section class="my-word" aria-label="Mes mots">
       <div class="center"><button type="button" id="my-toggle" class="secondary small-button" disabled>Mes mots…</button></div>
+      ${word.personal ? `<label>Mon sens <small class="muted">(mot absent du vocabulaire, gardé par toi)</small>
+        <input id="my-meaning" maxlength="200" required value="${escape(word.translation)}">
+      </label>` : ""}
       <label>Ma note <small class="muted">(moyen mnémotechnique, visible de toi seul, montré avec la réponse)</small>
         <textarea id="my-note" rows="2" maxlength="500" placeholder="ex. 好 : une femme 女 et son enfant 子"></textarea>
       </label>
-      <div><button type="button" id="my-note-save" class="secondary small-button">Enregistrer la note</button></div>
+      <div><button type="button" id="my-note-save" class="secondary small-button">${word.personal ? "Enregistrer" : "Enregistrer la note"}</button></div>
     </section>` : ""}
 
     <h3>Classificateur <small class="muted">量词</small></h3>
@@ -64,7 +69,7 @@ export async function openWordDialog(wordId, deckNames, onChange) {
     </form>`;
 
   bindSpeakButtons(dialog);
-  if (session.user) bindMyWord(dialog, wordId, word.hanzi, onChange);
+  if (session.user) bindMyWord(dialog, word, onChange);
   const strokes = mountStrokes(dialog.querySelector("#dialog-strokes"), word.hanzi);
   dialog.querySelector("#animate").addEventListener("click", () => strokes.animate());
   dialog.querySelector("#quiz").addEventListener("click", () => {
@@ -159,7 +164,9 @@ export async function openWordDialog(wordId, deckNames, onChange) {
 
 // Mes mots : garder le mot dans sa liste personnelle (révisée comme un exercice) et y noter son
 // moyen mnémotechnique.
-async function bindMyWord(dialog, wordId, hanzi, onChange) {
+async function bindMyWord(dialog, word, onChange) {
+  const { id: wordId, hanzi } = word;
+  const meaning = dialog.querySelector("#my-meaning");
   const toggle = dialog.querySelector("#my-toggle");
   const note = dialog.querySelector("#my-note");
   let mine;
@@ -177,9 +184,17 @@ async function bindMyWord(dialog, wordId, hanzi, onChange) {
   note.value = mine.note || "";
   render();
   toggle.addEventListener("click", async () => {
+    // Retirer un mot personnel le supprime.
+    if (mine.in_list && word.personal
+        && !confirm(`${hanzi} est un mot personnel : le retirer le supprime, avec ta progression et ta note. Continuer ?`)) return;
     toggle.disabled = true;
     try {
       await toggleMyWord(wordId, hanzi, mine.in_list);
+      if (word.personal && mine.in_list) {
+        onChange?.();
+        dialog.close();
+        return;
+      }
       mine.in_list = !mine.in_list;
       onChange?.();
     } catch (err) {
@@ -189,6 +204,11 @@ async function bindMyWord(dialog, wordId, hanzi, onChange) {
   });
   dialog.querySelector("#my-note-save").addEventListener("click", async () => {
     try {
+      if (meaning && meaning.value.trim() && meaning.value.trim() !== word.translation) {
+        const edited = await api(`/my-words/${wordId}`, { method: "PATCH", body: { translation: meaning.value.trim() } });
+        word.translation = edited.translation;
+        dialog.querySelector(".meaning").textContent = edited.translation;
+      }
       const saved = await api(`/my-words/${wordId}/note`, { method: "PUT", body: { note: note.value } });
       note.value = saved.note || "";
       toast(saved.note ? "Note enregistrée" : "Note supprimée", "success");

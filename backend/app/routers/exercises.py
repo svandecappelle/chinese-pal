@@ -28,7 +28,7 @@ SYLLABLE_MODES = {"tones", "hanzi_to_pinyin", "meaning_to_pinyin", "audio_to_pin
 CARDS_CTE = """
 WITH ex AS (SELECT * FROM exercises WHERE id = %(exercise_id)s),
 ex_words AS (
-    SELECT w.id FROM words w, ex WHERE ex.all_words
+    SELECT w.id FROM words w, ex WHERE ex.all_words AND w.owner_id IS NULL
     UNION
     SELECT dw.word_id FROM deck_words dw JOIN exercise_decks ed ON ed.deck_id = dw.deck_id
     WHERE ed.exercise_id = %(exercise_id)s
@@ -341,7 +341,7 @@ def get_session(exercise_id: int, modes: str | None = None,
         pool_words = {}
         if any(c["mode"] in SENTENCE_MODES for c in cards):
             for r in conn.execute(CARDS_CTE + """SELECT DISTINCT hanzi, classifiers FROM cards
-                                                 UNION ALL (SELECT hanzi, classifiers FROM words
+                                                 UNION ALL (SELECT hanzi, classifiers FROM words WHERE owner_id IS NULL
                                                             ORDER BY random() LIMIT 60)""", params):
                 pool_words.setdefault(r["hanzi"], r["classifiers"])
         notes = word_notes(conn, user, [c["word_id"] for c in cards])

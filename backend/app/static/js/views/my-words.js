@@ -12,12 +12,13 @@ function wordRow(w, inList) {
       <button type="button" class="my-word-main" data-open="${w.word_id}" title="Fiche du mot, ma note">
         <span class="my-word-hanzi" lang="zh">${escape(w.hanzi)}</span>
         <span class="my-word-text">
-          <span><strong>${escape(w.pinyin)}</strong> · ${escape(w.translation)}</span>
+          <span><strong>${escape(w.pinyin)}</strong> · ${escape(w.translation)}${w.personal ? ' <span class="tag" title="Absent du vocabulaire, gardé par toi">perso</span>' : ""}</span>
           ${w.note ? `<span class="word-note">${escape(w.note)}</span>` : '<span class="muted small">Ajouter une note…</span>'}
         </span>
       </button>
       ${speakButton(w.hanzi, { pinyin: w.pinyin })}
       ${inList ? `<button type="button" class="icon-button" data-remove="${w.word_id}" data-hanzi="${escape(w.hanzi)}"
+        ${w.personal ? 'data-personal="1"' : ""}
         aria-label="Retirer ${escape(w.hanzi)} de Mes mots">✕</button>` : ""}
     </li>`;
 }
@@ -45,8 +46,9 @@ export async function myWordsView(el) {
       ${data.words.length ? `<ul class="my-words">${data.words.map((w) => wordRow(w, true)).join("")}</ul>` : `
         <div class="empty">
           <p>Aucun mot pour l'instant.</p>
-          <p>Dans la <a href="#/lecture">lecture assistée</a>, touche un mot puis « ＋ Mes mots » ;
-            ou ouvre la fiche d'un mot depuis le <a href="#/vocabulaire">vocabulaire</a>.</p>
+          <p>Dans la <a href="#/lecture">lecture assistée</a>, touche un mot puis « ＋ Mes mots »
+            (même absent du vocabulaire : tu lui donnes son sens) ; ou ouvre la fiche d'un mot depuis
+            le <a href="#/vocabulaire">vocabulaire</a>.</p>
         </div>`}
       ${data.notes.length ? `
         <h3 class="section-title">Autres mots annotés</h3>
@@ -59,6 +61,7 @@ export async function myWordsView(el) {
           changed = false;
         }))));
     el.querySelectorAll("[data-remove]").forEach((b) => b.addEventListener("click", async () => {
+      if (b.dataset.personal && !confirm(`${b.dataset.hanzi} est un mot personnel : le retirer le supprime, avec ta progression et ta note. Continuer ?`)) return;
       try {
         await api(`/my-words/${b.dataset.remove}`, { method: "DELETE" });
         toast(`${b.dataset.hanzi} retiré de Mes mots.`);
