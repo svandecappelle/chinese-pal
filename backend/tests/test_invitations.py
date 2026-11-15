@@ -125,3 +125,15 @@ def test_guest_progress_follows_into_new_account(admin, anon, groups, sql):
     finally:
         admin.call("DELETE", f"/invitations/{inv['id']}")
         admin.call("DELETE", f"/exercises/{pub['id']}")
+
+
+def test_qr_code(admin, anon, make_user):
+    student, _ = make_user("eleve")
+    link = "https://exemple.fr/#/invitation/abc123"
+    response = admin.http.get("/api/invitations/qr", params={"text": link})
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/svg+xml")
+    assert response.text.lstrip().startswith("<svg") and "viewBox" in response.text
+    assert anon.http.get("/api/invitations/qr", params={"text": link}).status_code == 401
+    assert student.http.get("/api/invitations/qr", params={"text": link}).status_code == 403
+    assert admin.http.get("/api/invitations/qr", params={"text": "x" * 501}).status_code == 422

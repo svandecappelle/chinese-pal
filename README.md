@@ -63,7 +63,9 @@ maximal de comptes. La personne qui l'ouvre (`#/invitation/<jeton>`) choisit son
 son mot de passe, puis est connectée ; ce qu'elle avait révisé en invité la suit. Un professeur
 n'invite que dans des groupes sans droits (des classes), un gestionnaire de comptes dans tous ; un
 administrateur ne s'obtient jamais par un lien. Chaque lien montre qui s'est inscrit avec, se
-recopie tant qu'il est valable et se révoque (les comptes créés restent). Le jeton est gardé en
+recopie tant qu'il est valable et se révoque (les comptes créés restent). Son **QR code**
+(`GET /api/invitations/qr`, SVG fait par [segno](https://segno.readthedocs.io)) s'affiche en grand, en plein écran pour le
+projeter en classe, ou se télécharge pour l'imprimer. Le jeton est gardé en
 clair (table `invitations`, migration 016) pour pouvoir recopier le lien ; les essais de jetons
 faux sont freinés comme les connexions.
 

@@ -26,6 +26,34 @@ function status(inv) {
   return '<span class="tag">expiré</span>';
 }
 
+const qrUrl = (token) => `/api/invitations/qr?text=${encodeURIComponent(linkFor(token))}`;
+
+/** QR code du lien, à projeter en classe (plein écran) ou à télécharger pour l'imprimer. */
+function showQr(inv) {
+  const dialog = document.createElement("dialog");
+  dialog.className = "word-dialog qr-dialog";
+  const title = inv.note || inv.group_names.join(", ") || "Invitation";
+  dialog.innerHTML = `
+    <form method="dialog" class="dialog-close"><button class="icon-button" aria-label="Fermer">✕</button></form>
+    <h3>${escape(title)}</h3>
+    <p class="qr-hint">Scanne ce code avec ton téléphone pour créer ton compte.</p>
+    <img class="qr-image" src="${qrUrl(inv.token)}" alt="QR code du lien d'invitation">
+    <p class="muted small qr-link">${escape(linkFor(inv.token))}</p>
+    <div class="actions center-actions qr-actions">
+      ${document.fullscreenEnabled ? '<button type="button" data-fullscreen>Plein écran</button>' : ""}
+      <a class="button secondary" href="${qrUrl(inv.token)}" download="invitation-${escape(title).replace(/[^\w-]+/g, "-")}.svg">Télécharger</a>
+    </div>`;
+  document.body.append(dialog);
+  dialog.querySelector("[data-fullscreen]")?.addEventListener("click", () => {
+    dialog.requestFullscreen().catch(() => toast("Plein écran impossible ici.", "error"));
+  });
+  dialog.addEventListener("close", () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    dialog.remove();
+  });
+  dialog.showModal();
+}
+
 function invitationCard(inv) {
   const me = session.user;
   const uses = inv.max_uses ? `${inv.uses} / ${inv.max_uses} compte(s)` : `${inv.uses} compte(s)`;
@@ -46,6 +74,7 @@ function invitationCard(inv) {
           <input readonly value="${escape(linkFor(inv.token))}" aria-label="Lien d'invitation">
           <button type="button" class="secondary" data-copy>Copier</button>
           ${navigator.share ? '<button type="button" class="secondary" data-share>Partager</button>' : ""}
+          <button type="button" class="secondary" data-qr title="QR code à projeter ou imprimer">QR code</button>
         </div>` : ""}
       ${accounts ? `<p class="small inv-accounts">Inscrits : ${accounts}</p>` : ""}
       <div class="inv-foot">
@@ -155,6 +184,8 @@ export async function invitationsView(el) {
     const inv = invitations.find((i) => i.id === Number(card.dataset.id));
     if (e.target.closest("[data-copy]")) {
       copy(linkFor(inv.token), e.target.closest("[data-copy]"));
+    } else if (e.target.closest("[data-qr]")) {
+      showQr(inv);
     } else if (e.target.closest("[data-share]")) {
       navigator.share({ title: "Invitation", text: "Crée ton compte pour réviser le chinois :",
                         url: linkFor(inv.token) }).catch(() => {});

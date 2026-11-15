@@ -935,3 +935,16 @@ main:has(.ex-page) { max-width: 1440px; }
   .inv-layout { grid-template-columns: minmax(0, 1fr); }
 }
 .inv-layout fieldset { min-width: 0; }
+.inv-link { flex-wrap: wrap; }
+.inv-link input { flex-basis: 100%; }
+.qr-dialog { width: min(520px, calc(100vw - 2rem)); text-align: center; }
+.qr-dialog h3 { margin-top: 0; }
+.qr-image { display: block; width: min(360px, 100%); aspect-ratio: 1; margin: .5rem auto; background: #fff; border-radius: 8px; }
+.qr-link { word-break: break-all; }
+/* Plein écran (projection en classe) : le code prend toute la hauteur disponible. */
+.qr-dialog:fullscreen { width: 100vw; max-width: none; height: 100vh; max-height: none; margin: 0; border: 0; border-radius: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; }
+.qr-dialog:fullscreen h3 { font-size: 2.2rem; }
+.qr-dialog:fullscreen .qr-hint { font-size: 1.4rem; }
+.qr-dialog:fullscreen .qr-image { width: min(70vh, 90vw); }
+.qr-dialog:fullscreen .qr-actions, .qr-dialog:fullscreen .qr-link { display: none; }

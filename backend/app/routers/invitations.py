@@ -6,10 +6,12 @@ qui fait rejoindre des groupes. Un professeur ne peut inviter que dans des group
 en nombre d'inscriptions, et se révoque en le supprimant.
 """
 
+import io
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+import segno
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from psycopg.errors import UniqueViolation
 from pydantic import BaseModel, Field
 
@@ -85,6 +87,19 @@ def list_invitations(user: dict = Depends(inviter)):
     where, params = visible(user)
     with pool.connection() as conn:
         return conn.execute(LIST_SQL.format(where=where), params).fetchall()
+
+
+@router.get("/qr")
+def qr_code(text: str = Query(min_length=1, max_length=500), _: dict = Depends(inviter)):
+    """QR code (SVG) d'un lien d'invitation, à projeter en classe ou à imprimer.
+
+    Le lien est construit par le navigateur (son adresse publique) : le serveur ne fait que l'encoder.
+    """
+    buffer = io.BytesIO()
+    segno.make(text, error="m").save(buffer, kind="svg", scale=1, border=2, omitsize=True,
+                                     xmldecl=False, dark="#000", light="#fff")
+    return Response(buffer.getvalue(), media_type="image/svg+xml",
+                    headers={"Cache-Control": "private, max-age=86400"})
 
 
 @router.post("", status_code=201)
