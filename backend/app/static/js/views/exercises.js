@@ -34,6 +34,7 @@ export async function exercisesView(el) {
         </div>
         <div class="actions">
           ${sortable ? '<span class="muted small ex-sort-hint">⠿ Glisse une carte pour la ranger</span>' : ""}
+          ${can("manage_courses") ? '<a class="button secondary" href="#/invitations">Inviter des élèves</a>' : ""}
           ${can("manage_courses") ? '<a class="button" href="#/exercices/nouveau">+ Nouvel exercice</a>' : ""}
         </div>
       </div>

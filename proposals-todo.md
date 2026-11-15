@@ -4,7 +4,8 @@ Propositions restantes, classées par public. Déjà faits : dictée (écoute), 
 phrases d'exemple, entraînement aux tons, statistiques personnelles, lecture assistée, mode
 hors ligne (PWA), fil de révision par petits pas, Mes mots et notes personnelles (mots hors
 vocabulaire compris, que le professeur peut ajouter au vocabulaire), textes gradués
-(modifiables et masquables par les professeurs), tests de l'API à chaque push, préparation d'un exercice pour le hors ligne.
+(modifiables et masquables par les professeurs), tests de l'API à chaque push, préparation d'un exercice pour le hors ligne,
+liens d'invitation pour créer son compte.
 
 ## Priorités
 

@@ -1,5 +1,5 @@
 import { api, escape } from "../api.js";
-import { session, setUser } from "../session.js";
+import { can, session, setUser } from "../session.js";
 import { toast } from "../ui.js";
 
 export async function accountView(el) {
@@ -24,6 +24,8 @@ export async function accountView(el) {
         </form>
         <h3>Ce que tu peux faire</h3>
         <ul class="small">${groups}</ul>
+        ${can("manage_users") || can("manage_courses") ? `
+          <p><a class="button secondary small-button" href="#/invitations">Liens d'invitation</a></p>` : ""}
       </section>
 
       <section class="card-box">

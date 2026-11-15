@@ -9,7 +9,7 @@ export async function loginView(el) {
   el.innerHTML = `
     <div class="auth-card">
       <h2>Connexion</h2>
-      <p class="muted small">Les comptes sont créés par l'administrateur ou le professeur.</p>
+      <p class="muted small">Les comptes sont créés par le professeur ou l'administrateur, ou avec un lien d'invitation.</p>
       <form id="login-form" class="stack">
         <label>Identifiant
           <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>

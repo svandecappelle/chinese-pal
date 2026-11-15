@@ -6,6 +6,7 @@ import { accountView } from "./views/account.js";
 import { adminView } from "./views/admin.js";
 import { exercisesView } from "./views/exercises.js";
 import { feedView } from "./views/feed.js";
+import { invitationsView, signupView } from "./views/invitations.js";
 import { editorView } from "./views/editor.js";
 import { loginView } from "./views/login.js";
 import { myWordsView } from "./views/my-words.js";
@@ -28,6 +29,9 @@ const routes = [
   [/^\/mes-mots$/, myWordsView, "feed", "user"],
   [/^\/connexion$/, loginView, "", null],
   [/^\/compte$/, accountView, "account", "user"],
+  // Liens d'invitation (professeurs, administrateurs) et inscription par un lien.
+  [/^\/invitations$/, invitationsView, "account", "user"],
+  [/^\/invitation\/(?<token>[\w-]+)$/, signupView, "", null],
   [/^\/administration$/, adminView, "admin", "manage_users"],
   [/^\/exercices\/nouveau$/, editorView, "exercises", "manage_courses"],
   [/^\/exercices\/(?<id>\d+)\/modifier$/, editorView, "exercises", "manage_courses"],

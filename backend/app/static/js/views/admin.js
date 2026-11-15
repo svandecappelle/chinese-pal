@@ -103,7 +103,10 @@ export async function adminView(el) {
     content.innerHTML = `
       <div class="toolbar">
         <p class="muted small">${users.length} compte(s). Les droits viennent des groupes ; un administrateur a tous les droits.</p>
-        <button type="button" id="new-user">+ Nouveau compte</button>
+        <div class="actions">
+          <a class="button secondary" href="#/invitations">Liens d'invitation</a>
+          <button type="button" id="new-user">+ Nouveau compte</button>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="data">

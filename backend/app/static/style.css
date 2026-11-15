@@ -916,3 +916,22 @@ main:has(.ex-page) { max-width: 1440px; }
   .ex-icon-label { display: none; }
   .ex-actions .button { padding: .55rem .75rem; }
 }
+
+/* Liens d'invitation */
+.inv-layout { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.inv-list-title { margin: .25rem 0 .75rem; }
+.inv-list { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
+.inv-card { margin: 0; }
+.inv-card p { margin: .35rem 0; }
+.inv-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.inv-expired { opacity: .65; }
+.tag.inv-ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+.inv-link { display: flex; gap: .4rem; margin: .5rem 0; }
+.inv-link input { flex: 1; min-width: 0; font-size: .85rem; }
+.inv-link button { flex: none; padding: .35rem .7rem; }
+.inv-accounts { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
+.inv-foot { display: flex; justify-content: flex-end; }
+@media (max-width: 760px) {
+  .inv-layout { grid-template-columns: minmax(0, 1fr); }
+}
+.inv-layout fieldset { min-width: 0; }

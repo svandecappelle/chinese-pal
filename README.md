@@ -52,9 +52,20 @@ Les valeurs par défaut fonctionnent telles quelles. Pour les changer (ports, id
 ## Comptes et droits
 
 Le vocabulaire et les exercices **publics** se consultent et se révisent sans compte ; le reste
-(exercices d'une classe, modifications) demande de se connecter. Il n'y a
-pas d'inscription : les comptes sont créés dans **Administration** (un mot de passe est généré et
-affiché une fois ; chacun le change ensuite dans « Mon compte »).
+(exercices d'une classe, modifications) demande de se connecter. Il n'y a pas d'inscription
+libre : les comptes sont créés dans **Administration** (un mot de passe est généré et affiché une
+fois ; chacun le change ensuite dans « Mon compte »), ou par un **lien d'invitation**.
+
+**Liens d'invitation** (page « Inviter des élèves » des Exercices, ou Administration et Mon compte ;
+[invitations.py](backend/app/routers/invitations.py)) : un professeur ou un gestionnaire de comptes
+crée un lien qui fait rejoindre des groupes, valable de 1 jour à 3 mois, avec au besoin un nombre
+maximal de comptes. La personne qui l'ouvre (`#/invitation/<jeton>`) choisit son identifiant et
+son mot de passe, puis est connectée ; ce qu'elle avait révisé en invité la suit. Un professeur
+n'invite que dans des groupes sans droits (des classes), un gestionnaire de comptes dans tous ; un
+administrateur ne s'obtient jamais par un lien. Chaque lien montre qui s'est inscrit avec, se
+recopie tant qu'il est valable et se révoque (les comptes créés restent). Le jeton est gardé en
+clair (table `invitations`, migration 016) pour pouvoir recopier le lien ; les essais de jetons
+faux sont freinés comme les connexions.
 
 Les **droits** sont portés par les **groupes** ; un administrateur les a tous :
 
