@@ -54,7 +54,7 @@ cat > twa-manifest.json <<EOF
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "$ICON_BASE/manifest.webmanifest",
-  "fallbackType": "customtabs",
+  "fallbackType": "webview",
   "features": {},
   "alphaDependencies": { "enabled": false },
   "enableSiteSettingsShortcut": true,

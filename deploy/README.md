@@ -107,7 +107,8 @@ make apk
   `ANDROID_PACKAGE` dans `.env` ; ne plus le changer une fois l'appli diffusée.
 - **Installation sur le téléphone** : Android demande d'autoriser l'installation depuis le
   navigateur (« sources inconnues ») et Play Protect peut avertir la première fois. Android 7
-  minimum, avec Chrome (sinon l'appli s'ouvre dans un onglet du navigateur par défaut). Une
+  minimum. Avec Chrome (ou un navigateur compatible), l'appli tourne dans le navigateur, en plein
+  écran ; sans lui, elle ouvre le site dans une vue web intégrée. Une
   publication sur le Play Store éviterait ces étapes (le fichier `.aab` est aussi produit, dans
   `android/project/`).
 - **Essai avant la mise en ligne** : `ICON_BASE=http://app:8000 APK_NETWORK=chinese_default
