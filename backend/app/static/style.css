@@ -47,13 +47,20 @@ header {
 }
 header h1 { margin: 0; font-size: 1.6rem; }
 header h1 a { text-decoration: none; }
-header nav { display: flex; gap: .25rem; flex: 1; }
+header nav { display: flex; flex-wrap: wrap; gap: .25rem; flex: 1; min-width: 0; }
 header nav a {
   color: var(--muted); text-decoration: none; padding: .35rem .75rem; border-radius: 999px;
   transition: background .15s, color .15s;
 }
 header nav a:hover { background: var(--surface-2); color: var(--fg); }
 header nav a.active { color: var(--fg); background: var(--surface-2); font-weight: 600; }
+/* Écran moyen (tablette) : le menu prend sa propre ligne sous le titre et le compte. */
+@media (max-width: 1000px) {
+  header { flex-wrap: wrap; row-gap: .35rem; }
+  header .account { margin-left: auto; }
+  header nav { order: 3; flex-basis: 100%; }
+  header nav a { padding: .3rem .55rem; }
+}
 
 main { max-width: 900px; margin: 0 auto; padding: 1rem 1rem 3rem; }
 
@@ -327,8 +334,9 @@ label.small { font-size: .9rem; }
   /* Sur téléphone, l'indicateur n'apparaît que hors ligne ou serveur injoignable. */
   header .status.offline, header .status.ko { display: inline; order: 2; font-size: .75rem; }
   header .account { margin-left: auto; }
-  header nav { order: 3; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; }
-  header nav a { white-space: nowrap; flex: none; }
+  /* Les liens passent à la ligne plutôt que de déborder (7 liens pour un administrateur). */
+  header nav { order: 3; flex-basis: 100%; justify-content: center; gap: .15rem .1rem; }
+  header nav a { white-space: nowrap; padding: .25rem .55rem; font-size: .9rem; }
   .hide-narrow { display: none; }
   .big-hanzi { font-size: 3rem; }
   .pager { justify-content: center; }
