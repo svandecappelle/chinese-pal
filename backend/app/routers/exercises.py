@@ -1,6 +1,6 @@
 from typing import Literal, get_args
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from pydantic import BaseModel, Field
 
@@ -59,6 +59,22 @@ SELECT count(*) AS total,
        count(*) FILTER (WHERE due_at <= now()) AS due,
        count(*) FILTER (WHERE first_reviewed_at >= date_trunc('day', now())) AS introduced_today
 FROM cards
+"""
+
+
+# Cartes ratées (note 1) ces derniers jours, pas encore à revoir et pas revues aujourd'hui (une
+# carte ratée puis retrouvée dans le même test attend le lendemain) : un pas du fil les reprend.
+MISSED_DAYS = 7
+MISSED_WHERE = f"""
+SELECT * FROM cards c
+WHERE c.due_at > now() AND EXISTS (
+    SELECT 1 FROM review_log l
+    WHERE l.user_id = %(user_id)s AND l.word_id = c.word_id AND l.mode = c.mode AND l.grade = 1
+      AND l.reviewed_at > now() - interval '{MISSED_DAYS} days')
+  AND NOT EXISTS (
+    SELECT 1 FROM review_log l
+    WHERE l.user_id = %(user_id)s AND l.word_id = c.word_id AND l.mode = c.mode
+      AND l.reviewed_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
 """
 
 
@@ -280,11 +296,15 @@ def first_examples(conn, word_ids: list[int]) -> dict[int, dict]:
 
 @router.get("/{exercise_id}/session")
 def get_session(exercise_id: int, modes: str | None = None,
+                only: Literal["due", "missed", "new"] | None = None,
+                limit: int | None = Query(None, ge=1, le=100),
                 user: dict | None = Depends(auth.visitor)):
     """File de cartes du jour : cartes dues + nouvelles cartes dans la limite quotidienne.
 
     `modes` (séparés par des virgules) limite le test à certains modes de l'exercice ;
     `mode_counts` donne, par mode, les cartes à revoir et pas encore vues (choix avant le test).
+    Un pas du fil de révision (`only`, `limit`) ne prend qu'une sorte de cartes, en petit nombre :
+    à revoir, ratées ces derniers jours (revues en avance) ou nouvelles.
     Un exercice public se révise sans compte ; le compte invité n'est créé qu'à la première
     réponse (POST /api/reviews).
     """
@@ -295,14 +315,14 @@ def get_session(exercise_id: int, modes: str | None = None,
         chosen = [m for m in (modes or "").split(",") if m in exercise["modes"]] or None
         params = {"exercise_id": exercise_id, "user_id": user_id, "new_limit": stats["new_today"],
                   "modes": chosen}
-        only = " AND (%(modes)s::text[] IS NULL OR mode = ANY(%(modes)s))"
-        due = conn.execute(
-            CARDS_CTE + "SELECT * FROM cards WHERE due_at <= now()" + only
-            + " ORDER BY due_at LIMIT 500",
+        only_modes = " AND (%(modes)s::text[] IS NULL OR mode = ANY(%(modes)s))"
+        due = [] if only == "new" else conn.execute(
+            CARDS_CTE + (MISSED_WHERE if only == "missed" else "SELECT * FROM cards WHERE due_at <= now()")
+            + only_modes + " ORDER BY due_at LIMIT 500",
             params,
         ).fetchall()
-        new = conn.execute(
-            CARDS_CTE + "SELECT * FROM cards WHERE due_at IS NULL" + only
+        new = [] if only in ("due", "missed") else conn.execute(
+            CARDS_CTE + "SELECT * FROM cards WHERE due_at IS NULL" + only_modes
             + " ORDER BY mode_position, word_id LIMIT %(new_limit)s",
             params,
         ).fetchall()
@@ -314,7 +334,7 @@ def get_session(exercise_id: int, modes: str | None = None,
                 params,
             )
         }
-        cards = interleave(due, new)
+        cards = interleave(due, new)[:limit]
         examples = first_examples(conn, [c["word_id"] for c in cards])
         # Autres choix des phrases à trous : mots de l'exercice, complétés au hasard dans le
         # vocabulaire (ceux qui partagent un classificateur avec le mot attendu sont écartés).

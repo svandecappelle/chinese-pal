@@ -3,7 +3,7 @@ import { session, setUser } from "../session.js";
 
 export async function loginView(el) {
   if (session.user) {
-    location.hash = "#/";
+    location.hash = "#/fil";
     return;
   }
   el.innerHTML = `
@@ -39,7 +39,7 @@ export async function loginView(el) {
       setUser(user);
       const next = sessionStorage.getItem("chinese.next");
       sessionStorage.removeItem("chinese.next");
-      location.hash = `#${next && next !== "/connexion" ? next : "/"}`;
+      location.hash = `#${next && next !== "/connexion" ? next : "/fil"}`;
     } catch (err) {
       el.querySelector("#login-error").textContent = err.message;
       form.elements.password.select();

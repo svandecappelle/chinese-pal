@@ -263,12 +263,26 @@ function chooseModes(el, data, id) {
   });
 }
 
-export async function playView(el, { id }) {
-  let data = await api(`/exercises/${id}/session`);
-  const picked = await chooseModes(el, data, id);
-  if (picked.length < data.exercise.modes.length) {
-    data = await api(`/exercises/${id}/session?modes=${encodeURIComponent(picked.join(","))}`);
+// Un pas du fil de révision (#/exercices/1/test?pas=due&n=8) : quelques cartes d'une seule
+// sorte, sans choix des exercices, et retour au fil à la fin.
+const STEP_TITLES = { due: "Cartes à revoir", missed: "Mots ratés", new: "Nouveaux mots" };
+
+export async function playView(el, { id, query }) {
+  const step = STEP_TITLES[query?.get("pas")] ? query.get("pas") : null;
+  let data;
+  let picked;
+  if (step) {
+    const limit = Math.min(50, Math.max(1, Number(query.get("n")) || 8));
+    data = await api(`/exercises/${id}/session?only=${step}&limit=${limit}`);
+    picked = data.exercise.modes;
+  } else {
+    data = await api(`/exercises/${id}/session`);
+    picked = await chooseModes(el, data, id);
+    if (picked.length < data.exercise.modes.length) {
+      data = await api(`/exercises/${id}/session?modes=${encodeURIComponent(picked.join(","))}`);
+    }
   }
+  const quitHref = step ? "#/fil" : "#/";
   const queue = data.cards;
   const initialCount = queue.length;
   const results = { 1: 0, 2: 0, 3: 0, 4: 0 };
@@ -426,9 +440,11 @@ export async function playView(el, { id }) {
       <div class="toolbar">
         <div>
           <h2>${escape(data.exercise.name)}</h2>
-          <p class="muted small">Test · ${picked.length < data.exercise.modes.length
-            ? `${picked.length} exercice(s) sur ${data.exercise.modes.length}` : "réponse attendue"}
-            ${data.exercise.modes.length > 1 ? '<button type="button" class="link-button" id="change-modes">changer</button>' : ""}</p>
+          <p class="muted small">${step
+            ? `Pas du fil · ${STEP_TITLES[step]} · ${answeredCount() + 1} sur ${initialCount}`
+            : `Test · ${picked.length < data.exercise.modes.length
+              ? `${picked.length} exercice(s) sur ${data.exercise.modes.length}` : "réponse attendue"}
+            ${data.exercise.modes.length > 1 ? '<button type="button" class="link-button" id="change-modes">changer</button>' : ""}`}</p>
         </div>
         <label class="check small" title="Prononcer le mot quand la réponse s'affiche">
           <input type="checkbox" id="autoplay" ${autoplay ? "checked" : ""}> 🔊 auto
@@ -479,7 +495,7 @@ export async function playView(el, { id }) {
       <p class="muted center small">
         Raccourcis : <kbd>Entrée</kbd> vérifier puis note suggérée · <kbd>1</kbd>–<kbd>4</kbd> note ·
         <kbd>A</kbd> écouter · <kbd>T</kbd> traits ·
-        <a href="#/exercices/${id}/reviser">Mode révision</a> · <a href="#/">Quitter</a>
+        <a href="#/exercices/${id}/reviser">Mode révision</a> · <a href="${quitHref}">Quitter</a>
       </p>`;
 
     if (kind() === "strokes") startWriting();
@@ -901,20 +917,45 @@ export async function playView(el, { id }) {
 
   function renderEnd() {
     const total = Object.values(results).reduce((a, b) => a + b, 0);
+    if (step) return renderStepEnd(total);
     el.innerHTML = `
       <div class="flashcard">
         <div class="big-hanzi">${total ? "太好了！" : "✓"}</div>
         <p>${total
           ? `Test terminé : ${total} réponse(s).`
           : "Rien à tester pour le moment dans cet exercice : reviens plus tard, ou révise-le sans pression."}</p>
-        ${total ? `<p class="counts">
-          ${GRADES.map((g) => `<span class="${g.cls}">${g.label} : ${results[g.grade]}</span>`).join("")}
-        </p>` : ""}
+        ${countsHtml(total)}
       </div>
       <p class="center actions center-actions">
         <a class="button secondary" href="#/exercices/${id}/reviser">Mode révision</a>
         <a class="button" href="#/">Retour aux exercices</a>
       </p>`;
+  }
+
+  const countsHtml = (total) => (total ? `<p class="counts">
+    ${GRADES.map((g) => `<span class="${g.cls}">${g.label} : ${results[g.grade]}</span>`).join("")}
+  </p>` : "");
+
+  // Pas du fil terminé : il compte pour l'objectif du jour (s'il y a eu des réponses).
+  async function renderStepEnd(total) {
+    el.innerHTML = `
+      <div class="flashcard">
+        <div class="big-hanzi">${total ? "很好！" : "✓"}</div>
+        <p>${total ? "Pas terminé." : "Ce pas est déjà fait : rien à réviser ici pour le moment."}</p>
+        ${countsHtml(total)}
+      </div>
+      <p class="center actions center-actions">
+        <a class="button" href="#/fil">Retour à mon fil</a>
+      </p>`;
+    if (!total) return;
+    try {
+      await api("/feed/steps", {
+        method: "POST",
+        body: { exercise_id: Number(id), kind: step, answers: total, good: results[3] + results[4] },
+      });
+    } catch {
+      toast("Pas terminé, mais pas encore compté : le serveur est injoignable.", "error");
+    }
   }
 
   function onKey(e) {

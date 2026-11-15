@@ -2,12 +2,15 @@
 
 Propositions restantes, classées par public. Déjà faits : dictée (écoute), exercices sur les
 phrases d'exemple, entraînement aux tons, statistiques personnelles, lecture assistée, mode
-hors ligne (PWA).
+hors ligne (PWA), fil de révision par petits pas.
 
 ## Élèves
 
 - **Lecture assistée, suite** : reconnaître les noms propres (小明 est découpé 小 / 明) ; traduire
   en français les sens de CC-CEDICT (aujourd'hui en anglais hors vocabulaire).
+
+- **Fil de révision, suite** : rappel quotidien (notification de l'appli) quand les pas du jour
+  ne sont pas faits ; dans le suivi du professeur, la régularité de chaque élève (pas par jour).
 
 ## Professeurs
 

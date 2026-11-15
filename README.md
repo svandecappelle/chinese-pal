@@ -140,6 +140,17 @@ utile quand la vérification souple du sens se trompe.
   mots vus et maîtrisés (toutes leurs cartes à 21 jours ou plus), et les 20 mots les plus ratés
   sur 90 jours. Ces mots se retravaillent en mode révision (« Retravailler ces mots ») ou se
   remettent « à revoir » pour le prochain test (seulement dans les modes où ils ont été ratés).
+- **Mon fil** (onglet **Mon fil**, page d'accueil après connexion) : la révision par petits pas.
+  Chaque jour, quelques **pas** de 8 cartes au plus (environ 3 minutes chacun) pris dans les
+  exercices de l'élève : d'abord les cartes à revoir (les exercices les plus en retard d'abord),
+  puis les cartes ratées ces derniers jours (reprises le lendemain, en avance sur leur date), puis
+  les nouvelles cartes du jour ; une carte commune à plusieurs exercices ne compte qu'une fois. Un
+  pas lance un test court de cet exercice (`#/exercices/1/test?pas=due&n=8`, sans choix des modes)
+  et compte quand il va jusqu'au bout. L'élève choisit son **rythme** (2, 3 ou 5 pas par jour) ;
+  l'objectif atteint, « Un pas de plus » reste proposé. À côté : la semaine (jours révisés, avancée
+  du jour), la progression, et **le fil** des 7 derniers jours : séances (réponses, justes, une
+  barre par réponse), objectif atteint, mots découverts et maîtrisés, série de jours, nouveaux
+  exercices attribués, et ce qui revient demain ([feed.py](backend/app/routers/feed.py)).
 - Le « jour » est calculé en UTC.
 
 ## Prononciation, ordre des traits, exemples

@@ -5,6 +5,7 @@ import { can, displayName, loadSession, session, setUser } from "./session.js";
 import { accountView } from "./views/account.js";
 import { adminView } from "./views/admin.js";
 import { exercisesView } from "./views/exercises.js";
+import { feedView } from "./views/feed.js";
 import { editorView } from "./views/editor.js";
 import { loginView } from "./views/login.js";
 import { playView } from "./views/play.js";
@@ -16,9 +17,12 @@ import { vocabView } from "./views/vocab.js";
 import { writingView } from "./views/writing.js";
 
 // [chemin, vue, onglet actif, accès]. Accès : null (libre), "user" (connecté) ou un droit.
-// Chaque vue reçoit (élément, paramètres) et peut renvoyer une fonction de nettoyage.
+// Chaque vue reçoit (élément, paramètres) et peut renvoyer une fonction de nettoyage. Les
+// paramètres d'adresse (#/chemin?a=1) arrivent dans `query` (URLSearchParams).
 const routes = [
   [/^\/$/, exercisesView, "exercises", null],
+  // Fil de révision : les petits pas du jour et ce qui a été fait.
+  [/^\/fil$/, feedView, "feed", "user"],
   [/^\/connexion$/, loginView, "", null],
   [/^\/compte$/, accountView, "account", "user"],
   [/^\/administration$/, adminView, "admin", "manage_users"],
@@ -46,6 +50,7 @@ function renderHeader() {
   const user = session.user;
   document.querySelector("[data-nav=admin]").hidden = !can("manage_users");
   document.querySelector("[data-nav=stats]").hidden = !user && !session.guest;
+  document.querySelector("[data-nav=feed]").hidden = !user;
   document.getElementById("account").innerHTML = user
     ? `<a href="#/compte" data-nav="account" class="account-link" title="Mon compte">
          <span class="avatar" aria-hidden="true">${escape(displayName(user).slice(0, 1).toUpperCase())}</span>
@@ -63,7 +68,7 @@ function renderHeader() {
 async function render() {
   cleanup?.();
   cleanup = null;
-  const path = location.hash.slice(1) || "/";
+  const [path, search = ""] = (location.hash.slice(1) || "/").split("?");
   const route = routes.find(([re]) => re.test(path));
   if (!route) {
     location.hash = "#/";
@@ -73,7 +78,7 @@ async function render() {
 
   if (access && !session.user) {
     // Après connexion, retour à la page demandée.
-    sessionStorage.setItem("chinese.next", path);
+    sessionStorage.setItem("chinese.next", location.hash.slice(1) || "/");
     location.hash = "#/connexion";
     return;
   }
@@ -88,7 +93,8 @@ async function render() {
   });
   view.innerHTML = '<p class="muted">Chargement…</p>';
   try {
-    cleanup = (await viewFn(view, path.match(re).groups ?? {})) ?? null;
+    const params = { ...(path.match(re).groups ?? {}), query: new URLSearchParams(search) };
+    cleanup = (await viewFn(view, params)) ?? null;
   } catch (err) {
     view.innerHTML = `<p class="error">Erreur : ${escape(err.message)}</p>`;
   }
